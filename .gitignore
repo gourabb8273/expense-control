@@ -1,0 +1,24 @@
+# Node modules
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env files (root, backend, frontend)
+.env
+*.env
+backend/.env
+frontend/.env
+
+# Build output
+dist/
+frontend/dist/
+backend/dist/
+
+# Misc
+.DS_Store
+*.local
+
