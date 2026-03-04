@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 function LoginPage() {
   const { login } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,6 +28,14 @@ function LoginPage() {
 
   return (
     <div className="app-shell">
+      <button
+        type="button"
+        className="ghost-btn theme-toggle login-theme-toggle"
+        onClick={toggleTheme}
+        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+      </button>
       <div className="auth-card">
         <h1 className="app-title">Expense Control</h1>
         <p className="app-subtitle">Sign in to see your monthly and yearly spending insights.</p>

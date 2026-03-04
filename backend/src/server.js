@@ -7,6 +7,8 @@ const morgan = require('morgan');
 const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 const reportRoutes = require('./routes/reports');
+const categoryRoutes = require('./routes/categories');
+const balanceSheetRoutes = require('./routes/balanceSheet');
 
 const app = express();
 
@@ -25,6 +27,8 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/balance-sheet', balanceSheetRoutes);
 
 mongoose
   .connect(MONGODB_URI, {

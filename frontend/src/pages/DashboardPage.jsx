@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/api';
 import TransactionForm from '../components/TransactionForm';
 import MonthlyCharts from '../components/MonthlyCharts';
 import YearlySummary from '../components/YearlySummary';
 import YearlyCharts from '../components/YearlyCharts';
+import ManageCategoriesModal from '../components/ManageCategoriesModal';
+import BalanceSheetSection from '../components/BalanceSheetSection';
+import BalanceSheetYearSection from '../components/BalanceSheetYearSection';
+import { exportMonthlyPdf, exportYearlyPdf } from '../utils/exportPdf';
 
 function DashboardPage() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [year, setYear] = useState(today.getFullYear());
@@ -17,6 +23,9 @@ function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
   const [viewMode, setViewMode] = useState('monthly'); // 'monthly' | 'yearly'
+  const [staticCategories, setStaticCategories] = useState([]);
+  const [categoriesModalOpen, setCategoriesModalOpen] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const displayName =
     user?.name && user.name !== 'Demo User'
       ? user.name
@@ -30,14 +39,16 @@ function DashboardPage() {
   const loadData = async (selectedMonth, selectedYear) => {
     setLoading(true);
     try {
-      const [monthlyRes, yearlyRes, txRes] = await Promise.all([
+      const [monthlyRes, yearlyRes, txRes, catRes] = await Promise.all([
         api.get('/reports/monthly', { params: { month: selectedMonth, year: selectedYear } }),
         api.get('/reports/yearly', { params: { year: selectedYear } }),
         api.get('/transactions', { params: { month: selectedMonth, year: selectedYear } }),
+        api.get('/categories').catch(() => ({ data: { categories: [] } })),
       ]);
       setMonthlySummary(monthlyRes.data);
       setYearlySummary(yearlyRes.data);
       setTransactions(txRes.data.transactions);
+      setStaticCategories(catRes.data?.categories || []);
     } catch (err) {
       console.error('Failed to load data', err);
     } finally {
@@ -78,12 +89,83 @@ function DashboardPage() {
       type: editingTx.type,
       amount: Number(editingTx.amount),
       category: editingTx.category,
+      tag: editingTx.tag || undefined,
       description: editingTx.description || '',
       date: editingTx.dateInput,
     };
     await api.put(`/transactions/${editingTx._id}`, payload);
     setEditingTx(null);
     await loadData(month, year);
+  };
+
+  const captureChartImages = (sectionClass) => {
+    const section = document.querySelector(sectionClass);
+    if (!section) return [];
+    const cards = section.querySelectorAll('.chart-card[data-chart-title]');
+    const images = [];
+    cards.forEach((card) => {
+      const canvas = card.querySelector('canvas');
+      const title = card.getAttribute('data-chart-title');
+      if (canvas && title) {
+        try {
+          images.push({
+            title,
+            dataUrl: canvas.toDataURL('image/png'),
+            width: canvas.width,
+            height: canvas.height,
+          });
+        } catch (_) {}
+      }
+    });
+    return images;
+  };
+
+  const handleExportMonthlyPdf = async () => {
+    setExportingPdf(true);
+    try {
+      const chartImages = captureChartImages('.monthly-charts');
+      await exportMonthlyPdf({
+        year,
+        month,
+        monthlySummary,
+        transactions,
+        api,
+        chartImages,
+      });
+    } catch (err) {
+      console.error('Export PDF failed', err);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handleExportYearlyPdf = async () => {
+    setExportingPdf(true);
+    try {
+      const chartImages = captureChartImages('.yearly-charts');
+      await exportYearlyPdf({ year, yearlySummary, api, chartImages });
+    } catch (err) {
+      console.error('Export PDF failed', err);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handleTagChange = async (tx, newTag) => {
+    const dateStr = new Date(tx.date).toISOString().slice(0, 10);
+    try {
+      await api.put(`/transactions/${tx._id}`, {
+        type: tx.type,
+        amount: tx.amount,
+        category: tx.category,
+        tag: newTag || undefined,
+        description: tx.description || '',
+        date: dateStr,
+      });
+      await loadData(month, year);
+    } catch (err) {
+      console.error('Failed to update tag', err);
+    }
   };
 
   const totalForMonth = (monthlySummary?.totalExpense || 0) + (monthlySummary?.totalInvestment || 0);
@@ -97,10 +179,28 @@ function DashboardPage() {
             Hi {displayName}, track your spending and investments.
           </p>
         </div>
-        <button type="button" className="ghost-btn" onClick={logout}>
-          Logout
-        </button>
+        <div className="top-bar-actions">
+          <button
+            type="button"
+            className="ghost-btn theme-toggle"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+          </button>
+          <button type="button" className="ghost-btn" onClick={() => setCategoriesModalOpen(true)}>
+            Manage categories
+          </button>
+          <button type="button" className="ghost-btn" onClick={logout}>
+            Logout
+          </button>
+        </div>
       </header>
+      <ManageCategoriesModal
+        isOpen={categoriesModalOpen}
+        onClose={() => setCategoriesModalOpen(false)}
+        onSaved={() => loadData(month, year)}
+      />
 
       <main className="content">
         <section className="filters">
@@ -119,6 +219,28 @@ function DashboardPage() {
             >
               Year view
             </button>
+          </div>
+          <div className="export-pdf-row">
+            {viewMode === 'monthly' && (
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={handleExportMonthlyPdf}
+                disabled={exportingPdf}
+              >
+                {exportingPdf ? 'Exporting…' : 'Export monthly PDF'}
+              </button>
+            )}
+            {viewMode === 'yearly' && (
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={handleExportYearlyPdf}
+                disabled={exportingPdf}
+              >
+                {exportingPdf ? 'Exporting…' : 'Export yearly PDF'}
+              </button>
+            )}
           </div>
 
           {viewMode === 'monthly' && (
@@ -186,9 +308,9 @@ function DashboardPage() {
         </section>
 
         {viewMode === 'monthly' && (
-          <section className="layout-grid">
-            <div className="left-column">
-              <TransactionForm onCreated={handleCreateTransaction} />
+          <section className="dashboard-sections">
+            <div className="content-block">
+              <TransactionForm onCreated={handleCreateTransaction} staticCategories={staticCategories} />
               <div className="card transactions-list">
                 <div className="list-header">
                   <h2>Entries this month</h2>
@@ -212,10 +334,32 @@ function DashboardPage() {
                       />
                       <input
                         type="text"
+                        list={`edit-category-${editingTx.type}`}
                         value={editingTx.category}
                         onChange={(e) => setEditingTx({ ...editingTx, category: e.target.value })}
                         placeholder="Category"
                       />
+                      {staticCategories.filter((c) => c.type === editingTx.type).length > 0 && (
+                        <datalist id={`edit-category-${editingTx.type}`}>
+                          {staticCategories
+                            .filter((c) => c.type === editingTx.type)
+                            .map((c) => (
+                              <option key={c._id} value={c.name} />
+                            ))}
+                        </datalist>
+                      )}
+                      <select
+                        value={editingTx.tag || ''}
+                        onChange={(e) => setEditingTx({ ...editingTx, tag: e.target.value })}
+                        title="Tag"
+                      >
+                        <option value="">Tag (optional)</option>
+                        {staticCategories
+                          .filter((c) => c.type === editingTx.type)
+                          .map((c) => (
+                            <option key={c._id} value={c.name}>{c.name}</option>
+                          ))}
+                      </select>
                       <input
                         type="text"
                         value={editingTx.description || ''}
@@ -251,6 +395,7 @@ function DashboardPage() {
                           {tx.type === 'expense' ? 'Expense' : 'Investment'}
                         </span>
                         <span className="tx-category">{tx.category}</span>
+                        {tx.tag && <span className="tx-tag">#{tx.tag}</span>}
                       </div>
                       <div className="tx-meta">
                         <span className="tx-amount">₹{tx.amount.toLocaleString()}</span>
@@ -260,6 +405,19 @@ function DashboardPage() {
                             month: 'short',
                           })}
                         </span>
+                        <select
+                          className="tx-tag-select"
+                          value={tx.tag || ''}
+                          onChange={(e) => handleTagChange(tx, e.target.value)}
+                          title="Add or change tag"
+                        >
+                          <option value="">Add tag</option>
+                          {staticCategories
+                            .filter((c) => c.type === tx.type)
+                            .map((c) => (
+                              <option key={c._id} value={c.name}>{c.name}</option>
+                            ))}
+                        </select>
                         <button
                           type="button"
                           className="link-btn"
@@ -281,18 +439,22 @@ function DashboardPage() {
                 </ul>
               </div>
             </div>
-            <div className="right-column">
+            <div className="balance-sheet-month-wrap">
+              <BalanceSheetSection year={year} month={month} />
+            </div>
+            <div className="charts-at-bottom">
               <MonthlyCharts monthSummary={monthlySummary} />
             </div>
           </section>
         )}
 
         {viewMode === 'yearly' && (
-          <section className="layout-grid">
-            <div className="left-column">
+          <section className="dashboard-sections">
+            <div className="content-block">
               <YearlySummary yearly={yearlySummary} />
+              <BalanceSheetYearSection year={year} />
             </div>
-            <div className="right-column">
+            <div className="charts-at-bottom">
               <YearlyCharts yearly={yearlySummary} />
             </div>
           </section>

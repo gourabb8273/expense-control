@@ -23,6 +23,11 @@ const transactionSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    tag: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     description: {
       type: String,
       trim: true,

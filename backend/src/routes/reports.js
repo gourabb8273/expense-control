@@ -57,9 +57,57 @@ router.get('/monthly', async (req, res) => {
           total: { $sum: '$amount' },
         },
       },
+      { $sort: { total: -1 } },
+    ]);
+
+    const investmentCategories = await Transaction.aggregate([
       {
-        $sort: { total: -1 },
+        $match: {
+          userId,
+          date: { $gte: start, $lt: end },
+          type: 'investment',
+        },
       },
+      { $group: { _id: '$category', total: { $sum: '$amount' } } },
+      { $sort: { total: -1 } },
+    ]);
+
+    const expenseCategories = await Transaction.aggregate([
+      {
+        $match: {
+          userId,
+          date: { $gte: start, $lt: end },
+          type: 'expense',
+        },
+      },
+      { $group: { _id: '$category', total: { $sum: '$amount' } } },
+      { $sort: { total: -1 } },
+    ]);
+
+    const investmentByTag = await Transaction.aggregate([
+      {
+        $match: {
+          userId,
+          date: { $gte: start, $lt: end },
+          type: 'investment',
+          tag: { $exists: true, $ne: '' },
+        },
+      },
+      { $group: { _id: '$tag', total: { $sum: '$amount' } } },
+      { $sort: { total: -1 } },
+    ]);
+
+    const expenseByTag = await Transaction.aggregate([
+      {
+        $match: {
+          userId,
+          date: { $gte: start, $lt: end },
+          type: 'expense',
+          tag: { $exists: true, $ne: '' },
+        },
+      },
+      { $group: { _id: '$tag', total: { $sum: '$amount' } } },
+      { $sort: { total: -1 } },
     ]);
 
     return res.json({
@@ -67,10 +115,11 @@ router.get('/monthly', async (req, res) => {
       year,
       totalExpense: summary ? summary.totalExpense : 0,
       totalInvestment: summary ? summary.totalInvestment : 0,
-      categories: categories.map((c) => ({
-        category: c._id,
-        total: c.total,
-      })),
+      categories: categories.map((c) => ({ category: c._id, total: c.total })),
+      investmentCategories: investmentCategories.map((c) => ({ category: c._id, total: c.total })),
+      expenseCategories: expenseCategories.map((c) => ({ category: c._id, total: c.total })),
+      investmentByTag: investmentByTag.map((c) => ({ tag: c._id, total: c.total })),
+      expenseByTag: expenseByTag.map((c) => ({ tag: c._id, total: c.total })),
     });
   } catch (err) {
     console.error('Monthly report error', err);
@@ -124,12 +173,57 @@ router.get('/yearly', async (req, res) => {
           date: { $gte: start, $lt: end },
         },
       },
+      { $group: { _id: '$category', total: { $sum: '$amount' } } },
+      { $sort: { total: -1 } },
+    ]);
+
+    const investmentCategories = await Transaction.aggregate([
       {
-        $group: {
-          _id: '$category',
-          total: { $sum: '$amount' },
+        $match: {
+          userId,
+          date: { $gte: start, $lt: end },
+          type: 'investment',
         },
       },
+      { $group: { _id: '$category', total: { $sum: '$amount' } } },
+      { $sort: { total: -1 } },
+    ]);
+
+    const expenseCategories = await Transaction.aggregate([
+      {
+        $match: {
+          userId,
+          date: { $gte: start, $lt: end },
+          type: 'expense',
+        },
+      },
+      { $group: { _id: '$category', total: { $sum: '$amount' } } },
+      { $sort: { total: -1 } },
+    ]);
+
+    const investmentByTag = await Transaction.aggregate([
+      {
+        $match: {
+          userId,
+          date: { $gte: start, $lt: end },
+          type: 'investment',
+          tag: { $exists: true, $ne: '' },
+        },
+      },
+      { $group: { _id: '$tag', total: { $sum: '$amount' } } },
+      { $sort: { total: -1 } },
+    ]);
+
+    const expenseByTag = await Transaction.aggregate([
+      {
+        $match: {
+          userId,
+          date: { $gte: start, $lt: end },
+          type: 'expense',
+          tag: { $exists: true, $ne: '' },
+        },
+      },
+      { $group: { _id: '$tag', total: { $sum: '$amount' } } },
       { $sort: { total: -1 } },
     ]);
 
@@ -146,10 +240,11 @@ router.get('/yearly', async (req, res) => {
     return res.json({
       year,
       monthly: monthlySeries,
-      categories: categoryAgg.map((c) => ({
-        category: c._id,
-        total: c.total,
-      })),
+      categories: categoryAgg.map((c) => ({ category: c._id, total: c.total })),
+      investmentCategories: investmentCategories.map((c) => ({ category: c._id, total: c.total })),
+      expenseCategories: expenseCategories.map((c) => ({ category: c._id, total: c.total })),
+      investmentByTag: investmentByTag.map((c) => ({ tag: c._id, total: c.total })),
+      expenseByTag: expenseByTag.map((c) => ({ tag: c._id, total: c.total })),
     });
   } catch (err) {
     console.error('Yearly report error', err);

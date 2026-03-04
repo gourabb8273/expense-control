@@ -1,13 +1,23 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
-function TransactionForm({ onCreated }) {
+function TransactionForm({ onCreated, staticCategories = [] }) {
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
+  const [tag, setTag] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const categoriesForType = useMemo(
+    () => staticCategories.filter((c) => c.type === type).map((c) => c.name),
+    [staticCategories, type]
+  );
+  const tagOptions = useMemo(
+    () => staticCategories.filter((c) => c.type === type),
+    [staticCategories, type]
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,12 +40,14 @@ function TransactionForm({ onCreated }) {
         type,
         amount: Number(amount),
         category,
+        tag: tag || undefined,
         description,
         date,
       });
       setType('expense');
       setAmount('');
       setCategory('');
+      setTag('');
       setDescription('');
       setDate(new Date().toISOString().slice(0, 10));
     } catch (err) {
@@ -72,10 +84,28 @@ function TransactionForm({ onCreated }) {
         <label className="field">
           <span>Category</span>
           <input
+            list={`category-list-${type}`}
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            placeholder="e.g. Gym, Trip, RD, FD, Housekeeping"
+            placeholder={type === 'investment' ? 'e.g. RD, FD, ETF or type custom' : 'e.g. Loan, Rent, Gym or type custom'}
           />
+          {categoriesForType.length > 0 && (
+            <datalist id={`category-list-${type}`}>
+              {categoriesForType.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+          )}
+        </label>
+        <label className="field">
+          <span>Tag (optional)</span>
+          <select value={tag} onChange={(e) => setTag(e.target.value)}>
+            <option value="">— None —</option>
+            {tagOptions.map((c) => (
+              <option key={c._id} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+          <span className="field-hint">Pick a tag from Manage categories for pie charts by tag.</span>
         </label>
         <label className="field">
           <span>Description (optional)</span>

@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { type, amount, category, description, date } = req.body;
+    const { type, amount, category, description, date, tag } = req.body;
     if (!type || !amount || !category || !date) {
       return res.status(400).json({ message: 'type, amount, category, and date are required' });
     }
@@ -39,6 +39,7 @@ router.post('/', async (req, res) => {
       type,
       amount,
       category,
+      tag: tag ? String(tag).trim() : '',
       description: description || '',
       date: new Date(date),
     });
@@ -53,7 +54,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, amount, category, description, date } = req.body;
+    const { type, amount, category, description, date, tag } = req.body;
 
     if (!type || !amount || !category || !date) {
       return res.status(400).json({ message: 'type, amount, category, and date are required' });
@@ -65,6 +66,7 @@ router.put('/:id', async (req, res) => {
         type,
         amount,
         category,
+        tag: tag ? String(tag).trim() : '',
         description: description || '',
         date: new Date(date),
       },

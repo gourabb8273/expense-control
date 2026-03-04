@@ -70,5 +70,31 @@ router.post('/seed-demo-user', async (req, res) => {
   }
 });
 
+// Creates a second demo user: username "demo", password "demo". Safe to call multiple times (idempotent).
+router.post('/seed-demo2-user', async (req, res) => {
+  try {
+    const email = 'demo';
+    const password = 'demo';
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      const passwordHash = await bcrypt.hash(password, 10);
+      user = await User.create({
+        email,
+        passwordHash,
+        name: 'Demo',
+      });
+    }
+
+    return res.json({
+      message: 'Demo2 user ready',
+      email: user.email,
+    });
+  } catch (err) {
+    console.error('Seed demo2 user error', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 module.exports = router;
 
