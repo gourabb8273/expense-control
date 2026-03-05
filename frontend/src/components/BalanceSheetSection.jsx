@@ -115,7 +115,14 @@ function BalanceSheetSection({ year, month, onSaved }) {
                     onChange={(e) => updateAsset(i, 'value', e.target.value)}
                     placeholder="Value"
                   />
-                  <button type="button" className="link-btn danger small" onClick={() => removeAsset(i)}>Remove</button>
+                  <button
+                    type="button"
+                    className="link-btn danger small"
+                    onClick={() => removeAsset(i)}
+                    title="Remove asset"
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
               <button type="button" className="ghost-btn small" onClick={addAsset}>+ Add asset</button>
@@ -142,7 +149,14 @@ function BalanceSheetSection({ year, month, onSaved }) {
                     onChange={(e) => updateDebt(i, 'value', e.target.value)}
                     placeholder="Value"
                   />
-                  <button type="button" className="link-btn danger small" onClick={() => removeDebt(i)}>Remove</button>
+                  <button
+                    type="button"
+                    className="link-btn danger small"
+                    onClick={() => removeDebt(i)}
+                    title="Remove debt"
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
               <button type="button" className="ghost-btn small" onClick={addDebt}>+ Add debt</button>

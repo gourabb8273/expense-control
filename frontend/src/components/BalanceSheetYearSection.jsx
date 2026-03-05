@@ -61,6 +61,19 @@ function BalanceSheetYearSection({ year }) {
     ],
   };
 
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom' },
+      datalabels: { display: false },
+    },
+    scales: {
+      x: { ticks: { color: '#9ca3af' } },
+      y: { ticks: { color: '#9ca3af' } },
+    },
+  };
+
   return (
     <div className="card balance-sheet-year-card">
       <h2>Balance sheet · {year}</h2>
@@ -68,7 +81,7 @@ function BalanceSheetYearSection({ year }) {
       {hasAny ? (
         <>
           <div className="balance-sheet-chart">
-            <Bar data={chartData} />
+            <Bar data={chartData} options={chartOptions} />
           </div>
           <div className="balance-sheet-year-table-wrap">
             <table className="balance-sheet-year-table">

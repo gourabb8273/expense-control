@@ -1,12 +1,11 @@
-const CACHE_NAME = 'expense-control-cache-v1';
-const OFFLINE_URLS = ['/', '/index.html'];
+const CACHE_NAME = 'expense-control-cache-v2';
+const OFFLINE_URL = '/index.html';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(OFFLINE_URLS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll([OFFLINE_URL, '/']))
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -22,10 +21,26 @@ self.addEventListener('activate', (event) => {
       )
     )
   );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') {
+    return;
+  }
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(OFFLINE_URL, copy));
+          return response;
+        })
+        .catch(() =>
+          caches.match(OFFLINE_URL).then((cached) => cached || Response.error())
+        )
+    );
     return;
   }
 
@@ -34,7 +49,7 @@ self.addEventListener('fetch', (event) => {
       if (cached) {
         return cached;
       }
-      return fetch(event.request).catch(() => caches.match('/index.html'));
+      return fetch(event.request);
     })
   );
 });

@@ -322,6 +322,34 @@
   gap: 0.5rem;
 }
 
+.chart-list-wrapper {
+  margin-top: 0.4rem;
+}
+
+.chart-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+}
+
+.chart-list-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.chart-list-label {
+  color: var(--text-muted);
+}
+
+.chart-list-value {
+  font-weight: 500;
+}
+
 .yearly-summary .year-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr);
@@ -619,6 +647,8 @@
 .balance-sheet-card,
 .balance-sheet-year-card {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .balance-sheet-header {
@@ -652,15 +682,20 @@
 }
 
 .balance-sheet-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
   align-items: center;
-  gap: 0.4rem;
+  column-gap: 1.1rem;
+  row-gap: 0.25rem;
   margin-bottom: 0.4rem;
 }
 
+.balance-sheet-row .link-btn {
+  margin-left: 0.25rem;
+}
+
 .balance-sheet-row input[type="text"] {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   border-radius: 0.5rem;
   border: 1px solid #1f2937;
   background: #020617;
@@ -670,7 +705,7 @@
 }
 
 .balance-sheet-row input[type="number"] {
-  width: 100px;
+  width: 100%;
   border-radius: 0.5rem;
   border: 1px solid #1f2937;
   background: #020617;
@@ -718,7 +753,7 @@
 
 .balance-sheet-chart {
   margin-top: 0.75rem;
-  max-height: 280px;
+  height: 260px;
 }
 
 .balance-sheet-year-table-wrap {
@@ -867,4 +902,6 @@
   .auth-card {
     margin: 2.5rem auto;
   }
+
+  /* keep balance sheet fields on the same line even on small screens */
 }
