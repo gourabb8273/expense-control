@@ -74,12 +74,91 @@ function BalanceSheetYearSection({ year }) {
     },
   };
 
+  let growthSummary = null;
+  if (hasAny) {
+    const firstIdx = netArr.findIndex((_, i) => assetsArr[i] !== 0 || debtsArr[i] !== 0);
+    const lastIdx = (() => {
+      let idx = -1;
+      for (let i = 0; i < 12; i++) {
+        if (assetsArr[i] !== 0 || debtsArr[i] !== 0) {
+          idx = i;
+        }
+      }
+      return idx;
+    })();
+    if (firstIdx !== -1 && lastIdx !== -1 && lastIdx >= firstIdx) {
+      const startNet = netArr[firstIdx] || 0;
+      const lastNet = netArr[lastIdx] || 0;
+      const totalChange = lastNet - startNet;
+      const totalPct =
+        startNet !== 0 ? (totalChange / Math.abs(startNet)) * 100 : null;
+
+      const prevIdx = lastIdx > 0 ? lastIdx - 1 : -1;
+      let monthChange = null;
+      if (prevIdx >= 0) {
+        const prevNet = netArr[prevIdx] || 0;
+        const diff = lastNet - prevNet;
+        const pct = prevNet !== 0 ? (diff / Math.abs(prevNet)) * 100 : null;
+        monthChange = {
+          diff,
+          pct,
+          fromLabel: MONTH_NAMES[prevIdx + 1],
+          toLabel: MONTH_NAMES[lastIdx + 1],
+        };
+      }
+
+      growthSummary = {
+        totalChange,
+        totalPct,
+        monthChange,
+        lastLabel: MONTH_NAMES[lastIdx + 1],
+      };
+    }
+  }
+
   return (
     <div className="card balance-sheet-year-card">
       <h2>Balance sheet · {year}</h2>
       <p className="muted small">Month-wise assets, debts and net worth (from saved balance sheets).</p>
       {hasAny ? (
         <>
+          {growthSummary && (
+            <div className="balance-sheet-growth">
+              <p className="muted small">
+                Net worth change this year:{' '}
+                <strong>
+                  {growthSummary.totalChange >= 0 ? '+' : '-'}₹
+                  {Math.abs(growthSummary.totalChange).toLocaleString()}
+                </strong>
+                {growthSummary.totalPct != null && (
+                  <>
+                    {' '}
+                    (
+                    {growthSummary.totalPct >= 0 ? '+' : '-'}
+                    {Math.abs(growthSummary.totalPct).toFixed(1)}%)
+                  </>
+                )}
+              </p>
+              {growthSummary.monthChange && (
+                <p className="muted small">
+                  Last month vs previous ({growthSummary.monthChange.fromLabel} →{' '}
+                  {growthSummary.monthChange.toLabel}):{' '}
+                  <strong>
+                    {growthSummary.monthChange.diff >= 0 ? '+' : '-'}₹
+                    {Math.abs(growthSummary.monthChange.diff).toLocaleString()}
+                  </strong>
+                  {growthSummary.monthChange.pct != null && (
+                    <>
+                      {' '}
+                      (
+                      {growthSummary.monthChange.pct >= 0 ? '+' : '-'}
+                      {Math.abs(growthSummary.monthChange.pct).toFixed(1)}%)
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+          )}
           <div className="balance-sheet-chart">
             <Bar data={chartData} options={chartOptions} />
           </div>

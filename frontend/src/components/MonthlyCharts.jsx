@@ -42,7 +42,7 @@ function CategoryList({ items, labelKey, valueKey }) {
   );
 }
 
-function MonthlyCharts({ monthSummary }) {
+function MonthlyCharts({ monthSummary, comparison }) {
   const {
     totalExpense = 0,
     totalInvestment = 0,
@@ -54,6 +54,15 @@ function MonthlyCharts({ monthSummary }) {
   } = monthSummary || {};
 
   const hasData = totalExpense + totalInvestment > 0;
+
+  const currentInvestment = totalInvestment;
+  const currentExpense = totalExpense;
+  const prevInvestment = comparison?.prevInvestment || 0;
+  const prevExpense = comparison?.prevExpense || 0;
+  const avgInvestment = comparison?.avgInvestment || 0;
+  const avgExpense = comparison?.avgExpense || 0;
+  const hasComparison =
+    !!comparison && (prevInvestment > 0 || prevExpense > 0 || avgInvestment > 0 || avgExpense > 0);
 
   const investVsExpenseItems = [
     { label: 'Investment', value: totalInvestment },
@@ -262,9 +271,50 @@ function MonthlyCharts({ monthSummary }) {
     },
   });
 
+  const comparisonBarData = {
+    labels: ['Investment', 'Expense'],
+    datasets: [
+      {
+        label: 'Last month',
+        data: [prevInvestment, prevExpense],
+        backgroundColor: '#6b7280',
+        maxBarThickness: 28,
+      },
+      {
+        label: 'This month',
+        data: [currentInvestment, currentExpense],
+        backgroundColor: '#22c55e',
+        maxBarThickness: 28,
+      },
+      {
+        label: 'Year avg',
+        data: [avgInvestment, avgExpense],
+        backgroundColor: '#f97316',
+        maxBarThickness: 28,
+      },
+    ],
+  };
+
+  const comparisonBarOptions = {
+    ...optionsVerticalBar,
+    plugins: {
+      ...optionsVerticalBar.plugins,
+      legend: { display: true, position: 'bottom' },
+    },
+  };
+
   return (
     <div className="charts-section monthly-charts">
       <div className="charts-grid">
+        {hasComparison && (
+          <div
+            className="card chart-card chart-card-wide"
+            data-chart-title="This month vs last & avg"
+          >
+            <h3>This month vs last & avg</h3>
+            <Bar data={comparisonBarData} options={comparisonBarOptions} />
+          </div>
+        )}
         <div className="card chart-card" data-chart-title="Investment vs Expense">
           <h3>Investment vs Expense</h3>
           {hasData ? (

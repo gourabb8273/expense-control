@@ -170,6 +170,44 @@ function DashboardPage() {
 
   const totalForMonth = (monthlySummary?.totalExpense || 0) + (monthlySummary?.totalInvestment || 0);
 
+  const monthlyComparison = (() => {
+    if (!yearlySummary || !Array.isArray(yearlySummary.monthly)) {
+      return null;
+    }
+    const series = yearlySummary.monthly;
+    const current = series.find((m) => m.month === month);
+    const prevMonthNumber = month === 1 ? 12 : month - 1;
+    const prev = series.find((m) => m.month === prevMonthNumber) || { totalInvestment: 0, totalExpense: 0 };
+    const monthsWithData = series.filter(
+      (m) => (m.totalInvestment || 0) > 0 || (m.totalExpense || 0) > 0
+    );
+    if (monthsWithData.length === 0) {
+      return {
+        prevInvestment: prev.totalInvestment || 0,
+        prevExpense: prev.totalExpense || 0,
+        avgInvestment: 0,
+        avgExpense: 0,
+      };
+    }
+    const sum = monthsWithData.reduce(
+      (acc, m) => ({
+        investment: acc.investment + (m.totalInvestment || 0),
+        expense: acc.expense + (m.totalExpense || 0),
+      }),
+      { investment: 0, expense: 0 }
+    );
+    const avgInvestment = sum.investment / monthsWithData.length;
+    const avgExpense = sum.expense / monthsWithData.length;
+    return {
+      prevInvestment: prev.totalInvestment || 0,
+      prevExpense: prev.totalExpense || 0,
+      avgInvestment,
+      avgExpense,
+      currentInvestment: current?.totalInvestment || 0,
+      currentExpense: current?.totalExpense || 0,
+    };
+  })();
+
   return (
     <div className="app-shell">
       <header className="top-bar">
@@ -443,7 +481,7 @@ function DashboardPage() {
               <BalanceSheetSection year={year} month={month} />
             </div>
             <div className="charts-at-bottom">
-              <MonthlyCharts monthSummary={monthlySummary} />
+              <MonthlyCharts monthSummary={monthlySummary} comparison={monthlyComparison} />
             </div>
           </section>
         )}
