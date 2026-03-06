@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react';
+import { Pie } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from 'chart.js';
 import { api } from '../services/api';
 
+ChartJS.register(ArcElement, Tooltip, Legend);
+
 const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const PIE_COLORS = ['#22c55e', '#3b82f6', '#f97316', '#a855f7', '#ec4899', '#eab308', '#0ea5e9', '#14b8a6'];
 
 function BalanceSheetSection({ year, month, onSaved }) {
   const [assets, setAssets] = useState([]);
@@ -36,6 +46,43 @@ function BalanceSheetSection({ year, month, onSaved }) {
   const totalAssets = assets.reduce((s, i) => s + (Number(i.value) || 0), 0);
   const totalDebts = debts.reduce((s, i) => s + (Number(i.value) || 0), 0);
   const netWorth = totalAssets - totalDebts;
+
+  const assetsWithValue = assets.filter((a) => (a.name || '').trim() && (Number(a.value) || 0) > 0);
+  const debtsWithValue = debts.filter((d) => (d.name || '').trim() && (Number(d.value) || 0) > 0);
+  const assetsPieData = {
+    labels: assetsWithValue.map((a) => a.name || '—'),
+    datasets: [{
+      data: assetsWithValue.map((a) => Number(a.value) || 0),
+      backgroundColor: PIE_COLORS,
+      borderWidth: 0,
+    }],
+  };
+  const debtsPieData = {
+    labels: debtsWithValue.map((d) => d.name || '—'),
+    datasets: [{
+      data: debtsWithValue.map((d) => Number(d.value) || 0),
+      backgroundColor: PIE_COLORS.slice().reverse(),
+      borderWidth: 0,
+    }],
+  };
+  const pieOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom' },
+      datalabels: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const v = ctx.raw || 0;
+            const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
+            const pct = total ? Math.round((v / total) * 100) : 0;
+            return `₹${Number(v).toLocaleString('en-IN')} (${pct}%)`;
+          },
+        },
+      },
+    },
+  };
 
   const addAsset = () => setAssets([...assets, { name: '', value: 0 }]);
   const addDebt = () => setDebts([...debts, { name: '', value: 0 }]);
@@ -172,6 +219,30 @@ function BalanceSheetSection({ year, month, onSaved }) {
               ₹{netWorth.toLocaleString()}
             </strong>
           </div>
+
+          {(assetsWithValue.length > 0 || debtsWithValue.length > 0) && (
+            <div className="balance-sheet-charts">
+              {assetsWithValue.length > 0 && (
+                <div className="balance-sheet-chart-card">
+                  <h3>Assets by category</h3>
+                  <div className="balance-sheet-chart-wrap">
+                    <Pie data={assetsPieData} options={pieOptions} />
+                  </div>
+                  <p className="chart-total">Total: ₹{totalAssets.toLocaleString('en-IN')}</p>
+                </div>
+              )}
+              {debtsWithValue.length > 0 && (
+                <div className="balance-sheet-chart-card">
+                  <h3>Debts by category</h3>
+                  <div className="balance-sheet-chart-wrap">
+                    <Pie data={debtsPieData} options={pieOptions} />
+                  </div>
+                  <p className="chart-total">Total: ₹{totalDebts.toLocaleString('en-IN')}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="balance-sheet-actions">
             <button type="button" className="primary-btn" onClick={handleSave} disabled={saving}>
               {saving ? 'Saving…' : 'Save balance sheet'}

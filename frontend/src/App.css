@@ -833,6 +833,38 @@
   color: #fca5a5;
 }
 
+.balance-sheet-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.balance-sheet-chart-card {
+  background: var(--card-bg, rgba(30, 41, 59, 0.6));
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.5));
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.balance-sheet-chart-card h3 {
+  font-size: 0.9rem;
+  margin: 0;
+}
+.balance-sheet-chart-wrap {
+  position: relative;
+  height: 180px;
+  width: 100%;
+}
+.balance-sheet-chart-card .chart-total {
+  margin: 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.4));
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .balance-sheet-actions {
   margin-top: 0.75rem;
 }
@@ -840,6 +872,11 @@
 .balance-sheet-chart {
   margin-top: 0.75rem;
   height: 260px;
+}
+
+.balance-sheet-year-total {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
 }
 
 .balance-sheet-year-table-wrap {

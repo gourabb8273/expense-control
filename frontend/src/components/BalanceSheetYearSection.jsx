@@ -162,6 +162,19 @@ function BalanceSheetYearSection({ year }) {
           <div className="balance-sheet-chart">
             <Bar data={chartData} options={chartOptions} />
           </div>
+          {(() => {
+            let lastIdx = -1;
+            for (let i = 0; i < 12; i++) {
+              if (assetsArr[i] !== 0 || debtsArr[i] !== 0) lastIdx = i;
+            }
+            const lastM = lastIdx >= 0 ? lastIdx + 1 : 12;
+            const row = byMonth[lastM] || { totalAssets: 0, totalDebts: 0, netWorth: 0 };
+            return (
+              <p className="chart-total balance-sheet-year-total">
+                Total (last month with data · {MONTH_NAMES[lastM]}): Assets ₹{row.totalAssets.toLocaleString('en-IN')} · Debts ₹{row.totalDebts.toLocaleString('en-IN')} · Net worth ₹{row.netWorth.toLocaleString('en-IN')}
+              </p>
+            );
+          })()}
           <div className="balance-sheet-year-table-wrap">
             <table className="balance-sheet-year-table">
               <thead>
