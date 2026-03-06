@@ -17,6 +17,15 @@ function formatAmount(n) {
 
 const PIE_COLORS = ['#3b82f6', '#22c55e', '#f97316', '#a855f7', '#ec4899', '#eab308', '#0ea5e9', '#14b8a6'];
 
+function ChartTotal({ amount, label = 'Total' }) {
+  if (amount == null || Number(amount) === 0) return null;
+  return (
+    <p className="chart-total">
+      {label}: {formatAmount(Number(amount))}
+    </p>
+  );
+}
+
 function CategoryList({ items, labelKey, valueKey }) {
   if (!items || items.length === 0) return null;
 
@@ -61,8 +70,13 @@ function MonthlyCharts({ monthSummary, comparison }) {
   const prevExpense = comparison?.prevExpense || 0;
   const avgInvestment = comparison?.avgInvestment || 0;
   const avgExpense = comparison?.avgExpense || 0;
+  const cashflowCurrent = comparison?.cashflowCurrent ?? 0;
+  const cashflowPrev = comparison?.cashflowPrev ?? 0;
+  const cashflowAvg = comparison?.cashflowAvg ?? 0;
   const hasComparison =
-    !!comparison && (prevInvestment > 0 || prevExpense > 0 || avgInvestment > 0 || avgExpense > 0);
+    !!comparison &&
+    (prevInvestment > 0 || prevExpense > 0 || avgInvestment > 0 || avgExpense > 0 ||
+     cashflowCurrent > 0 || cashflowPrev > 0 || cashflowAvg > 0);
 
   const investVsExpenseItems = [
     { label: 'Investment', value: totalInvestment },
@@ -272,23 +286,23 @@ function MonthlyCharts({ monthSummary, comparison }) {
   });
 
   const comparisonBarData = {
-    labels: ['Investment', 'Expense'],
+    labels: ['Cashflow (entered)', 'Investment', 'Expense'],
     datasets: [
       {
         label: 'Last month',
-        data: [prevInvestment, prevExpense],
+        data: [cashflowPrev, prevInvestment, prevExpense],
         backgroundColor: '#6b7280',
         maxBarThickness: 28,
       },
       {
         label: 'This month',
-        data: [currentInvestment, currentExpense],
+        data: [cashflowCurrent, currentInvestment, currentExpense],
         backgroundColor: '#22c55e',
         maxBarThickness: 28,
       },
       {
         label: 'Year avg',
-        data: [avgInvestment, avgExpense],
+        data: [cashflowAvg, avgInvestment, avgExpense],
         backgroundColor: '#f97316',
         maxBarThickness: 28,
       },
@@ -313,6 +327,7 @@ function MonthlyCharts({ monthSummary, comparison }) {
           >
             <h3>This month vs last & avg</h3>
             <Bar data={comparisonBarData} options={comparisonBarOptions} />
+            <ChartTotal amount={currentInvestment + currentExpense} label="This month total" />
           </div>
         )}
         <div className="card chart-card" data-chart-title="Investment vs Expense">
@@ -321,6 +336,7 @@ function MonthlyCharts({ monthSummary, comparison }) {
             <>
               <Doughnut data={investVsExpenseData} options={optionsPie} />
               <CategoryList items={investVsExpenseItems} labelKey="label" valueKey="value" />
+              <ChartTotal amount={totalInvestment + totalExpense} />
             </>
           ) : (
             <p className="muted small">Add entries to see the ratio.</p>
@@ -329,7 +345,10 @@ function MonthlyCharts({ monthSummary, comparison }) {
         <div className="card chart-card" data-chart-title="Totals (bar)">
           <h3>Totals (bar)</h3>
           {hasData ? (
-            <Bar data={totalsBarData} options={optionsVerticalBar} />
+            <>
+              <Bar data={totalsBarData} options={optionsVerticalBar} />
+              <ChartTotal amount={totalInvestment + totalExpense} />
+            </>
           ) : (
             <p className="muted small">No data this month.</p>
           )}
@@ -344,6 +363,7 @@ function MonthlyCharts({ monthSummary, comparison }) {
                 labelKey="category"
                 valueKey="total"
               />
+              <ChartTotal amount={investmentCategories.reduce((s, c) => s + (c.total || 0), 0)} />
             </>
           ) : (
             <p className="muted small">No investment entries this month.</p>
@@ -359,6 +379,7 @@ function MonthlyCharts({ monthSummary, comparison }) {
                 labelKey="category"
                 valueKey="total"
               />
+              <ChartTotal amount={expenseCategories.reduce((s, c) => s + (c.total || 0), 0)} />
             </>
           ) : (
             <p className="muted small">No expense entries this month.</p>
@@ -374,6 +395,7 @@ function MonthlyCharts({ monthSummary, comparison }) {
                 labelKey="category"
                 valueKey="total"
               />
+              <ChartTotal amount={categories.reduce((s, c) => s + (c.total || 0), 0)} />
             </>
           ) : (
             <p className="muted small">No category data this month.</p>
@@ -389,6 +411,7 @@ function MonthlyCharts({ monthSummary, comparison }) {
                 labelKey="tag"
                 valueKey="total"
               />
+              <ChartTotal amount={investmentByTag.reduce((s, t) => s + (t.total || 0), 0)} />
             </>
           ) : (
             <p className="muted small">Tag investment entries for this chart.</p>
@@ -404,6 +427,7 @@ function MonthlyCharts({ monthSummary, comparison }) {
                 labelKey="tag"
                 valueKey="total"
               />
+              <ChartTotal amount={expenseByTag.reduce((s, t) => s + (t.total || 0), 0)} />
             </>
           ) : (
             <p className="muted small">Tag expense entries for this chart.</p>
@@ -412,7 +436,10 @@ function MonthlyCharts({ monthSummary, comparison }) {
         <div className="card chart-card chart-card-wide" data-chart-title="Top categories (all)">
           <h3>Top categories (all)</h3>
           {categoryBarLabels.length > 0 ? (
-            <Bar data={categoryBarData} options={optionsBar} />
+            <>
+              <Bar data={categoryBarData} options={optionsBar} />
+              <ChartTotal amount={categories.slice(0, 10).reduce((s, c) => s + (c.total || 0), 0)} />
+            </>
           ) : (
             <p className="muted small">No category data this month.</p>
           )}
@@ -420,7 +447,10 @@ function MonthlyCharts({ monthSummary, comparison }) {
         <div className="card chart-card chart-card-wide" data-chart-title="Investment categories (bar)">
           <h3>Investment categories (bar)</h3>
           {investmentCategoryBarLabels.length > 0 ? (
-            <Bar data={investmentCategoryBarData} options={optionsBar} />
+            <>
+              <Bar data={investmentCategoryBarData} options={optionsBar} />
+              <ChartTotal amount={investmentCategories.reduce((s, c) => s + (c.total || 0), 0)} />
+            </>
           ) : (
             <p className="muted small">No investment category data this month.</p>
           )}
@@ -428,7 +458,10 @@ function MonthlyCharts({ monthSummary, comparison }) {
         <div className="card chart-card chart-card-wide" data-chart-title="Expense categories (bar)">
           <h3>Expense categories (bar)</h3>
           {expenseCategoryBarLabels.length > 0 ? (
-            <Bar data={expenseCategoryBarData} options={optionsBar} />
+            <>
+              <Bar data={expenseCategoryBarData} options={optionsBar} />
+              <ChartTotal amount={expenseCategories.reduce((s, c) => s + (c.total || 0), 0)} />
+            </>
           ) : (
             <p className="muted small">No expense category data this month.</p>
           )}
@@ -436,7 +469,10 @@ function MonthlyCharts({ monthSummary, comparison }) {
         <div className="card chart-card chart-card-wide" data-chart-title="Investment by tag (bar)">
           <h3>Investment by tag (bar)</h3>
           {investmentTagBarLabels.length > 0 ? (
-            <Bar data={investmentTagBarData} options={makeTagBarOptions(maxInvestmentTag)} />
+            <>
+              <Bar data={investmentTagBarData} options={makeTagBarOptions(maxInvestmentTag)} />
+              <ChartTotal amount={investmentByTag.reduce((s, t) => s + (t.total || 0), 0)} />
+            </>
           ) : (
             <p className="muted small">No investment tag data this month.</p>
           )}
@@ -444,7 +480,10 @@ function MonthlyCharts({ monthSummary, comparison }) {
         <div className="card chart-card chart-card-wide" data-chart-title="Expense by tag (bar)">
           <h3>Expense by tag (bar)</h3>
           {expenseTagBarLabels.length > 0 ? (
-            <Bar data={expenseTagBarData} options={makeTagBarOptions(maxExpenseTag)} />
+            <>
+              <Bar data={expenseTagBarData} options={makeTagBarOptions(maxExpenseTag)} />
+              <ChartTotal amount={expenseByTag.reduce((s, t) => s + (t.total || 0), 0)} />
+            </>
           ) : (
             <p className="muted small">No expense tag data this month.</p>
           )}

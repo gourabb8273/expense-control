@@ -26,6 +26,58 @@ function DashboardPage() {
   const [staticCategories, setStaticCategories] = useState([]);
   const [categoriesModalOpen, setCategoriesModalOpen] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [listFilter, setListFilter] = useState('all'); // 'all' | 'expense' | 'investment'
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const CASHFLOW_STORAGE_KEY = 'expense_control_monthly_cashflow';
+  const getCashflowKey = (y, m) => `${y}-${m}`;
+  const loadStoredCashflow = (y, m) => {
+    try {
+      const raw = localStorage.getItem(CASHFLOW_STORAGE_KEY);
+      if (!raw) return '';
+      const obj = JSON.parse(raw);
+      const val = obj[getCashflowKey(y, m)];
+      return val !== undefined && val !== null && val !== '' ? String(val) : '';
+    } catch {
+      return '';
+    }
+  };
+  const saveStoredCashflow = (y, m, value) => {
+    try {
+      const raw = localStorage.getItem(CASHFLOW_STORAGE_KEY) || '{}';
+      const obj = JSON.parse(raw);
+      const num = value === '' ? null : Number(value);
+      if (num === null || isNaN(num)) delete obj[getCashflowKey(y, m)];
+      else obj[getCashflowKey(y, m)] = num;
+      localStorage.setItem(CASHFLOW_STORAGE_KEY, JSON.stringify(obj));
+    } catch (e) {
+      console.warn('Could not save cashflow', e);
+    }
+  };
+
+  const [manualCashflow, setManualCashflow] = useState(() => loadStoredCashflow(year, month));
+
+  useEffect(() => {
+    setManualCashflow(loadStoredCashflow(year, month));
+  }, [month, year]);
+
+  const handleCashflowChange = (e) => {
+    const v = e.target.value;
+    setManualCashflow(v);
+    saveStoredCashflow(year, month, v);
+  };
+
+  const getCashflowNum = (y, m) => {
+    const v = loadStoredCashflow(y, m);
+    return v === '' ? 0 : (Number(v) || 0);
+  };
+
+  const yearlyCashflowArray = (() => {
+    const arr = [];
+    for (let m = 1; m <= 12; m++) arr.push(getCashflowNum(year, m));
+    return arr;
+  })();
+
   const displayName =
     user?.name && user.name !== 'Demo User'
       ? user.name
@@ -131,6 +183,7 @@ function DashboardPage() {
         transactions,
         api,
         chartImages,
+        cashflow: getCashflowNum(year, month),
       });
     } catch (err) {
       console.error('Export PDF failed', err);
@@ -143,7 +196,7 @@ function DashboardPage() {
     setExportingPdf(true);
     try {
       const chartImages = captureChartImages('.yearly-charts');
-      await exportYearlyPdf({ year, yearlySummary, api, chartImages });
+      await exportYearlyPdf({ year, yearlySummary, api, chartImages, yearlyCashflow: yearlyCashflowArray });
     } catch (err) {
       console.error('Export PDF failed', err);
     } finally {
@@ -168,16 +221,60 @@ function DashboardPage() {
     }
   };
 
-  const totalForMonth = (monthlySummary?.totalExpense || 0) + (monthlySummary?.totalInvestment || 0);
+  const expenseAmount = monthlySummary?.totalExpense || 0;
+  const investmentAmount = monthlySummary?.totalInvestment || 0;
+  const totalForMonth = expenseAmount + investmentAmount; // Expense + Investment (calculated)
+  const cashflowAmount = manualCashflow === '' ? 0 : (Number(manualCashflow) || 0);
+  // Remaining in bank = cashflow − total. If cashflow not entered, show 0
+  const remainingBalance = manualCashflow === '' ? 0 : (cashflowAmount - totalForMonth);
+
+  const filteredTransactions = (() => {
+    let list = transactions;
+    if (listFilter !== 'all') {
+      list = list.filter((tx) => tx.type === listFilter);
+    }
+    const q = (searchQuery || '').trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (tx) =>
+          (tx.category && tx.category.toLowerCase().includes(q)) ||
+          (tx.description && tx.description.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  })();
 
   const monthlyComparison = (() => {
+    const prevMonthNum = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const cashflowCurrent = getCashflowNum(year, month);
+    const cashflowPrev = getCashflowNum(prevYear, prevMonthNum);
+    let cashflowSum = 0;
+    let cashflowMonthsWithData = 0;
+    for (let m = 1; m <= 12; m++) {
+      const v = getCashflowNum(year, m);
+      cashflowSum += v;
+      if (v > 0) cashflowMonthsWithData += 1;
+    }
+    // Year avg = sum of cashflow ÷ count of months that have cashflow (so 1 month → that month's value)
+    const cashflowAvg = cashflowMonthsWithData > 0 ? cashflowSum / cashflowMonthsWithData : 0;
+
     if (!yearlySummary || !Array.isArray(yearlySummary.monthly)) {
-      return null;
+      return {
+        prevInvestment: 0,
+        prevExpense: 0,
+        avgInvestment: 0,
+        avgExpense: 0,
+        currentInvestment: 0,
+        currentExpense: 0,
+        cashflowCurrent,
+        cashflowPrev,
+        cashflowAvg,
+      };
     }
     const series = yearlySummary.monthly;
     const current = series.find((m) => m.month === month);
-    const prevMonthNumber = month === 1 ? 12 : month - 1;
-    const prev = series.find((m) => m.month === prevMonthNumber) || { totalInvestment: 0, totalExpense: 0 };
+    const prev = series.find((m) => m.month === prevMonthNum) || { totalInvestment: 0, totalExpense: 0 };
     const monthsWithData = series.filter(
       (m) => (m.totalInvestment || 0) > 0 || (m.totalExpense || 0) > 0
     );
@@ -187,6 +284,11 @@ function DashboardPage() {
         prevExpense: prev.totalExpense || 0,
         avgInvestment: 0,
         avgExpense: 0,
+        currentInvestment: current?.totalInvestment || 0,
+        currentExpense: current?.totalExpense || 0,
+        cashflowCurrent,
+        cashflowPrev,
+        cashflowAvg,
       };
     }
     const sum = monthsWithData.reduce(
@@ -205,6 +307,9 @@ function DashboardPage() {
       avgExpense,
       currentInvestment: current?.totalInvestment || 0,
       currentExpense: current?.totalExpense || 0,
+      cashflowCurrent,
+      cashflowPrev,
+      cashflowAvg,
     };
   })();
 
@@ -308,22 +413,41 @@ function DashboardPage() {
                   </select>
                 </label>
               </div>
-              <div className="monthly-kpis">
-                <div className="kpi">
-                  <span className="kpi-label">Total for month</span>
-                  <span className="kpi-value">₹{totalForMonth.toLocaleString()}</span>
-                </div>
-                <div className="kpi">
-                  <span className="kpi-label">Investment</span>
-                  <span className="kpi-value">
-                    ₹{(monthlySummary?.totalInvestment || 0).toLocaleString()}
-                  </span>
-                </div>
-                <div className="kpi">
-                  <span className="kpi-label">Expenses</span>
-                  <span className="kpi-value">
-                    ₹{(monthlySummary?.totalExpense || 0).toLocaleString()}
-                  </span>
+              <div className="monthly-cashflow">
+                <p className="muted small" style={{ marginBottom: '0.5rem' }}>
+                  Month cashflow — you set cashflow; expense &amp; investment from entries; remaining = cashflow − total
+                </p>
+                <div className="monthly-kpis monthly-cashflow-grid">
+                  <div className="kpi kpi-cashflow-input">
+                    <span className="kpi-label">Cashflow (in bank)</span>
+                    <input
+                      type="number"
+                      className="cashflow-input"
+                      placeholder="Enter amount"
+                      min="0"
+                      step="1"
+                      value={manualCashflow}
+                      onChange={handleCashflowChange}
+                    />
+                  </div>
+                  <div className="kpi">
+                    <span className="kpi-label">Expense</span>
+                    <span className="kpi-value">₹{expenseAmount.toLocaleString()}</span>
+                  </div>
+                  <div className="kpi">
+                    <span className="kpi-label">Investment</span>
+                    <span className="kpi-value">₹{investmentAmount.toLocaleString()}</span>
+                  </div>
+                  <div className="kpi">
+                    <span className="kpi-label">Total</span>
+                    <span className="kpi-value">₹{totalForMonth.toLocaleString()}</span>
+                  </div>
+                  <div className="kpi">
+                    <span className="kpi-label">Remaining</span>
+                    <span className={`kpi-value ${remainingBalance >= 0 ? 'positive' : 'negative'}`}>
+                      ₹{remainingBalance.toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
             </>
@@ -353,6 +477,38 @@ function DashboardPage() {
                 <div className="list-header">
                   <h2>Entries this month</h2>
                   {loading && <span className="pill">Loading…</span>}
+                </div>
+                <div className="list-filters">
+                  <div className="list-filter-buttons">
+                    <button
+                      type="button"
+                      className={listFilter === 'all' ? 'primary-btn small' : 'ghost-btn small'}
+                      onClick={() => setListFilter('all')}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      className={listFilter === 'investment' ? 'primary-btn small' : 'ghost-btn small'}
+                      onClick={() => setListFilter('investment')}
+                    >
+                      Investment
+                    </button>
+                    <button
+                      type="button"
+                      className={listFilter === 'expense' ? 'primary-btn small' : 'ghost-btn small'}
+                      onClick={() => setListFilter('expense')}
+                    >
+                      Expense
+                    </button>
+                  </div>
+                  <input
+                    type="search"
+                    className="list-search"
+                    placeholder="Search category or description"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
                 {editingTx && (
                   <div className="edit-bar">
@@ -425,8 +581,11 @@ function DashboardPage() {
                 {transactions.length === 0 && (
                   <p className="muted small">No entries yet for this month.</p>
                 )}
+                {transactions.length > 0 && filteredTransactions.length === 0 && (
+                  <p className="muted small">No entries match the filter or search.</p>
+                )}
                 <ul>
-                  {transactions.map((tx) => (
+                  {filteredTransactions.map((tx) => (
                     <li key={tx._id} className="tx-row">
                       <div className="tx-main">
                         <span className={`tx-type tx-type-${tx.type}`}>
@@ -489,11 +648,51 @@ function DashboardPage() {
         {viewMode === 'yearly' && (
           <section className="dashboard-sections">
             <div className="content-block">
+              {yearlySummary && Array.isArray(yearlySummary.monthly) && (
+                <div className="card yearly-cashflow-card">
+                  <h2>Year cashflow · {yearlySummary.year}</h2>
+                  <div className="year-cashflow-kpis">
+                    <div className="kpi">
+                      <span className="kpi-label">Total investment</span>
+                      <span className="kpi-value">
+                        ₹{yearlySummary.monthly.reduce((s, m) => s + m.totalInvestment, 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="kpi">
+                      <span className="kpi-label">Total expense</span>
+                      <span className="kpi-value">
+                        ₹{yearlySummary.monthly.reduce((s, m) => s + m.totalExpense, 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="kpi">
+                      <span className="kpi-label">Remaining balance</span>
+                      <span className={`kpi-value ${(yearlySummary.monthly.reduce((s, m) => s + m.totalInvestment, 0) - yearlySummary.monthly.reduce((s, m) => s + m.totalExpense, 0)) >= 0 ? 'positive' : 'negative'}`}>
+                        ₹{(yearlySummary.monthly.reduce((s, m) => s + m.totalInvestment, 0) - yearlySummary.monthly.reduce((s, m) => s + m.totalExpense, 0)).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="month-strip month-strip-net">
+                    {yearlySummary.monthly.map((m) => {
+                      const net = m.totalInvestment - m.totalExpense;
+                      return (
+                        <div key={m.month} className="month-pill">
+                          <span className="month-name">
+                            {new Date(2000, m.month - 1, 1).toLocaleString('default', { month: 'short' })}
+                          </span>
+                          <span className={`month-net ${net >= 0 ? 'positive' : 'negative'}`}>
+                            ₹{net.toLocaleString()}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <YearlySummary yearly={yearlySummary} />
               <BalanceSheetYearSection year={year} />
             </div>
             <div className="charts-at-bottom">
-              <YearlyCharts yearly={yearlySummary} />
+              <YearlyCharts yearly={yearlySummary} yearlyCashflow={yearlyCashflowArray} />
             </div>
           </section>
         )}

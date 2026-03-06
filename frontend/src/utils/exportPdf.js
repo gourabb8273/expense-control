@@ -50,7 +50,7 @@ function addChartImagesToPdf(doc, chartImages, startY) {
   return y;
 }
 
-export async function exportMonthlyPdf({ year, month, monthlySummary, transactions, api, chartImages }) {
+export async function exportMonthlyPdf({ year, month, monthlySummary, transactions, api, chartImages, cashflow = 0 }) {
   const doc = new jsPDF();
   const monthLabel = MONTH_NAMES[month] || month;
   const ms = monthlySummary || {};
@@ -59,6 +59,8 @@ export async function exportMonthlyPdf({ year, month, monthlySummary, transactio
   const totalSum = totalInv + totalExp;
   const invPct = totalSum > 0 ? Math.round((totalInv / totalSum) * 100) : 0;
   const expPct = totalSum > 0 ? Math.round((totalExp / totalSum) * 100) : 0;
+  const cashflowNum = Number(cashflow) || 0;
+  const remaining = cashflowNum - totalSum;
 
   // ——— Page 1: Executive summary ———
   doc.setFontSize(18);
@@ -75,15 +77,24 @@ export async function exportMonthlyPdf({ year, month, monthlySummary, transactio
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Executive summary', MARGIN, y);
+  doc.text('Month cashflow', MARGIN, y);
   doc.setFont('helvetica', 'normal');
   y += 7;
-  doc.text(`Total investment: ${RU}${totalInv.toLocaleString('en-IN')}`, MARGIN, y);
+  doc.text(`Cashflow (in bank): ${RU}${cashflowNum.toLocaleString('en-IN')}`, MARGIN, y);
   y += 6;
-  doc.text(`Total expense: ${RU}${totalExp.toLocaleString('en-IN')}`, MARGIN, y);
+  doc.text(`Expense: ${RU}${totalExp.toLocaleString('en-IN')}`, MARGIN, y);
   y += 6;
-  doc.text(`Total: ${RU}${(totalInv + totalExp).toLocaleString('en-IN')}`, MARGIN, y);
+  doc.text(`Investment: ${RU}${totalInv.toLocaleString('en-IN')}`, MARGIN, y);
   y += 6;
+  doc.text(`Total (Expense + Investment): ${RU}${totalSum.toLocaleString('en-IN')}`, MARGIN, y);
+  y += 6;
+  doc.text(`Remaining: ${RU}${remaining.toLocaleString('en-IN')}`, MARGIN, y);
+  y += 10;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Summary', MARGIN, y);
+  doc.setFont('helvetica', 'normal');
+  y += 7;
   doc.text(`Split: Investment ${invPct}%  |  Expense ${expPct}%`, MARGIN, y);
   y += 14;
 
@@ -235,12 +246,18 @@ export async function exportMonthlyPdf({ year, month, monthlySummary, transactio
   doc.save(`report-${monthLabel}-${year}.pdf`);
 }
 
-export async function exportYearlyPdf({ year, yearlySummary, api, chartImages }) {
+export async function exportYearlyPdf({ year, yearlySummary, api, chartImages, yearlyCashflow }) {
   const doc = new jsPDF();
   const ys = yearlySummary || {};
   const monthly = ys.monthly || [];
   const totalInv = monthly.reduce((s, m) => s + (m.totalInvestment || 0), 0);
   const totalExp = monthly.reduce((s, m) => s + (m.totalExpense || 0), 0);
+  const cashflowArr = Array.isArray(yearlyCashflow) && yearlyCashflow.length >= 12
+    ? yearlyCashflow.slice(0, 12)
+    : [...(yearlyCashflow || []), ...Array(12).fill(0)].slice(0, 12);
+  const totalCashflow = cashflowArr.reduce((s, v) => s + (Number(v) || 0), 0);
+  const totalSum = totalInv + totalExp;
+  const remainingBalance = totalCashflow - totalSum;
 
   // ——— Page 1: Executive summary ———
   doc.setFontSize(18);
@@ -257,14 +274,16 @@ export async function exportYearlyPdf({ year, yearlySummary, api, chartImages })
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Executive summary', MARGIN, y);
+  doc.text('Year cashflow', MARGIN, y);
   doc.setFont('helvetica', 'normal');
   y += 7;
+  doc.text(`Total cashflow (entered): ${RU}${totalCashflow.toLocaleString('en-IN')}`, MARGIN, y);
+  y += 6;
   doc.text(`Total investment: ${RU}${totalInv.toLocaleString('en-IN')}`, MARGIN, y);
   y += 6;
   doc.text(`Total expense: ${RU}${totalExp.toLocaleString('en-IN')}`, MARGIN, y);
   y += 6;
-  doc.text(`Net: ${RU}${(totalInv - totalExp).toLocaleString('en-IN')}`, MARGIN, y);
+  doc.text(`Remaining balance: ${RU}${remainingBalance.toLocaleString('en-IN')}`, MARGIN, y);
   y += 14;
 
   // ——— 1. Month-wise summary (main table) ———
@@ -277,15 +296,27 @@ export async function exportYearlyPdf({ year, yearlySummary, api, chartImages })
   doc.text('Month-wise summary', MARGIN, y);
   doc.setFont('helvetica', 'normal');
   y += 7;
+  const monthRows = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => {
+    const monthLabel = MONTH_NAMES[m] || m;
+    const row = monthly.find((x) => x.month === m) || {};
+    const inv = row.totalInvestment || 0;
+    const exp = row.totalExpense || 0;
+    const cf = Number(cashflowArr[m - 1]) || 0;
+    const total = inv + exp;
+    const remaining = cf - total;
+    return [
+      monthLabel,
+      cf.toLocaleString('en-IN'),
+      inv.toLocaleString('en-IN'),
+      exp.toLocaleString('en-IN'),
+      total.toLocaleString('en-IN'),
+      remaining.toLocaleString('en-IN'),
+    ];
+  });
   autoTable(doc, {
     startY: y,
-    head: [['Month', `Investment (${RU})`, `Expense (${RU})`, `Net (${RU})`]],
-    body: monthly.map((m) => {
-      const monthLabel = MONTH_NAMES[m.month] || m.month;
-      const inv = m.totalInvestment || 0;
-      const exp = m.totalExpense || 0;
-      return [monthLabel, inv.toLocaleString('en-IN'), exp.toLocaleString('en-IN'), (inv - exp).toLocaleString('en-IN')];
-    }),
+    head: [['Month', `Cashflow (${RU})`, `Investment (${RU})`, `Expense (${RU})`, `Total (${RU})`, `Remaining (${RU})`]],
+    body: monthRows,
     theme: 'striped',
     headStyles: { fillColor: [15, 23, 42] },
     margin: { left: MARGIN, right: MARGIN },
