@@ -302,6 +302,52 @@
   padding-left: 0.15rem;
 }
 
+.tx-desc-wrap {
+  margin-top: 0.2rem;
+}
+
+.desc-breakdown {
+  margin-top: 0.25rem;
+  padding-left: 0.15rem;
+}
+
+.desc-breakdown-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.75rem;
+}
+
+.desc-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.desc-breakdown-label {
+  color: var(--text-muted);
+}
+
+.desc-breakdown-value {
+  font-weight: 500;
+}
+
+.desc-breakdown-summary {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.desc-breakdown-ok {
+  color: var(--success, #22c55e);
+}
+
+.desc-breakdown-mismatch {
+  color: var(--danger, #ef4444);
+}
+
 .charts-section {
   width: 100%;
 }

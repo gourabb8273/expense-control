@@ -52,7 +52,30 @@ function CategoryList({ items, labelKey, valueKey }) {
   );
 }
 
-function TitleTagBreakdownCard({ title, breakdown, emptyText }) {
+function parseDescriptionBreakdown(description) {
+  if (!description || typeof description !== 'string') return null;
+  const parts = description.split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 0) return null;
+
+  const items = [];
+  const lineRegex = /^\s*([^-\n]+?)\s*-\s*([0-9]+(?:\.[0-9]+)?)\s*$/;
+
+  parts.forEach((part) => {
+    const m = part.match(lineRegex);
+    if (!m) return;
+    const label = m[1].trim();
+    const value = Number(m[2]);
+    if (!label || Number.isNaN(value)) return;
+    items.push({ label, value });
+  });
+
+  if (items.length === 0) return null;
+  const total = items.reduce((sum, x) => sum + (x.value || 0), 0);
+  if (total <= 0) return null;
+  return { items, total };
+}
+
+function TitleTagBreakdownCard({ title, breakdown, emptyText, transactions = [], txType }) {
   const tags = useMemo(
     () => (Array.isArray(breakdown) ? breakdown.map((b) => b.tag).filter(Boolean) : []),
     [breakdown]
@@ -88,6 +111,58 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText }) {
     [items]
   );
 
+  const [selectedType, setSelectedType] = useState('');
+
+  const descriptionBreakdown = useMemo(() => {
+    if (!effectiveSelectedTag || !selectedType || !Array.isArray(transactions) || !txType) {
+      return null;
+    }
+    const titleRegex = /^\s*([^-\n]+?)\s*-\s*([^-\n]+?)\s*$/;
+    const matchingTx = transactions.filter((tx) => {
+      if (!tx || tx.type !== txType || !tx.category) return false;
+      const m = String(tx.category).match(titleRegex);
+      if (!m) return false;
+      const tag = m[1].trim();
+      const kind = m[2].trim();
+      return tag === effectiveSelectedTag && kind === selectedType;
+    });
+    if (matchingTx.length === 0) return null;
+
+    const map = new Map();
+    let totalFromDescriptions = 0;
+
+    matchingTx.forEach((tx) => {
+      const parsed = parseDescriptionBreakdown(tx.description || '');
+      if (!parsed) return;
+      totalFromDescriptions += parsed.total || 0;
+      parsed.items.forEach((item) => {
+        const prev = map.get(item.label) || 0;
+        map.set(item.label, prev + (item.value || 0));
+      });
+    });
+
+    if (map.size === 0) return null;
+
+    const rows = Array.from(map.entries()).map(([label, value]) => ({ label, value }));
+    rows.sort((a, b) => (b.value || 0) - (a.value || 0));
+
+    const chartTotalForType = items.find((x) => x.type === selectedType)?.total || 0;
+    const diff = chartTotalForType - totalFromDescriptions;
+    const matches = Math.round(chartTotalForType) === Math.round(totalFromDescriptions);
+
+    return {
+      rows,
+      totalFromDescriptions,
+      chartTotalForType,
+      diff,
+      matches,
+    };
+  }, [effectiveSelectedTag, selectedType, transactions, txType, items]);
+
+  const handleRowClick = (typeLabel) => {
+    setSelectedType((prev) => (prev === typeLabel ? '' : typeLabel));
+  };
+
   return (
     <div className="card chart-card" data-chart-title={title}>
       <div className="chart-header-row">
@@ -110,8 +185,56 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText }) {
       {tags.length > 0 && items.length > 0 ? (
         <>
           <Pie data={pieData} options={{ plugins: { datalabels: { display: false } } }} />
-          <CategoryList items={items} labelKey="type" valueKey="total" />
+          <div className="chart-list-wrapper">
+            <ul className="chart-list">
+              {items.map((item) => {
+                const value = Number(item.total) || 0;
+                const totalAll = items.reduce((sum, x) => sum + (Number(x.total) || 0), 0);
+                const percent = totalAll ? Math.round((value / totalAll) * 100) : 0;
+                const isSelected = selectedType === item.type;
+                return (
+                  <li
+                    key={item.type}
+                    className="chart-list-row"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => handleRowClick(item.type)}
+                  >
+                    <span className="chart-list-label">
+                      {item.type} {isSelected ? '· details' : ''}
+                    </span>
+                    <span className="chart-list-value">
+                      {formatAmount(value)} {percent ? `(${percent}%)` : ''}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
           <ChartTotal amount={items.reduce((s, x) => s + (x.total || 0), 0)} />
+          {descriptionBreakdown && (
+            <div className="desc-breakdown" style={{ marginTop: '0.4rem' }}>
+              <ul className="desc-breakdown-list">
+                {descriptionBreakdown.rows.map((row) => (
+                  <li key={row.label} className="desc-breakdown-row">
+                    <span className="desc-breakdown-label">{row.label}</span>
+                    <span className="desc-breakdown-value">
+                      {formatAmount(row.value)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="desc-breakdown-summary">
+                Breakdown from descriptions: {formatAmount(descriptionBreakdown.totalFromDescriptions)}{' '}
+                {descriptionBreakdown.matches ? (
+                  <span className="desc-breakdown-ok">(matches chart total)</span>
+                ) : (
+                  <span className="desc-breakdown-mismatch">
+                    (diff vs chart: {formatAmount(descriptionBreakdown.diff)})
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
         </>
       ) : (
         <p className="muted small">{emptyText}</p>
@@ -120,7 +243,7 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText }) {
   );
 }
 
-function MonthlyCharts({ monthSummary, comparison }) {
+function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
   const {
     totalExpense = 0,
     totalInvestment = 0,
@@ -507,11 +630,15 @@ function MonthlyCharts({ monthSummary, comparison }) {
         <TitleTagBreakdownCard
           title="Expense by destination (title)"
           breakdown={expenseTitleTagBreakdown}
+          txType="expense"
+          transactions={transactions}
           emptyText="Use title like “puri - hotel” to see destination breakdown."
         />
         <TitleTagBreakdownCard
           title="Investment by destination (title)"
           breakdown={investmentTitleTagBreakdown}
+          txType="investment"
+          transactions={transactions}
           emptyText="Use title like “gold - sip” to see destination breakdown."
         />
         <div className="card chart-card chart-card-wide" data-chart-title="Top categories (all)">

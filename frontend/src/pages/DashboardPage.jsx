@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/api';
@@ -10,6 +10,29 @@ import ManageCategoriesModal from '../components/ManageCategoriesModal';
 import BalanceSheetSection from '../components/BalanceSheetSection';
 import BalanceSheetYearSection from '../components/BalanceSheetYearSection';
 import { exportMonthlyPdf, exportYearlyPdf } from '../utils/exportPdf';
+
+function parseDescriptionBreakdown(description) {
+  if (!description || typeof description !== 'string') return null;
+  const parts = description.split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 0) return null;
+
+  const items = [];
+  const lineRegex = /^\s*([^-\n]+?)\s*-\s*([0-9]+(?:\.[0-9]+)?)\s*$/;
+
+  parts.forEach((part) => {
+    const m = part.match(lineRegex);
+    if (!m) return;
+    const label = m[1].trim();
+    const value = Number(m[2]);
+    if (!label || Number.isNaN(value)) return;
+    items.push({ label, value });
+  });
+
+  if (items.length === 0) return null;
+  const total = items.reduce((sum, x) => sum + (x.value || 0), 0);
+  if (total <= 0) return null;
+  return { items, total };
+}
 
 function DashboardPage() {
   const { user, logout } = useAuth();
@@ -77,6 +100,15 @@ function DashboardPage() {
     for (let m = 1; m <= 12; m++) arr.push(getCashflowNum(year, m));
     return arr;
   })();
+
+  const [descExpanded, setDescExpanded] = useState(() => ({}));
+
+  const toggleDescExpanded = (id) => {
+    setDescExpanded((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   const displayName =
     user?.name && user.name !== 'Demo User'
@@ -243,6 +275,17 @@ function DashboardPage() {
     }
     return list;
   })();
+
+  const parsedBreakdowns = useMemo(() => {
+    const map = new Map();
+    filteredTransactions.forEach((tx) => {
+      const parsed = parseDescriptionBreakdown(tx.description || '');
+      if (parsed) {
+        map.set(tx._id, parsed);
+      }
+    });
+    return map;
+  }, [filteredTransactions]);
 
   const monthlyComparison = (() => {
     const prevMonthNum = month === 1 ? 12 : month - 1;
@@ -593,8 +636,8 @@ function DashboardPage() {
                         </span>
                         <span className="tx-category">{tx.category}</span>
                         {tx.tag && <span className="tx-tag">#{tx.tag}</span>}
-                      </div>
-                      <div className="tx-meta">
+                    </div>
+                    <div className="tx-meta">
                         <span className="tx-amount">₹{tx.amount.toLocaleString()}</span>
                         <span className="tx-date">
                           {new Date(tx.date).toLocaleDateString('en-IN', {
@@ -630,7 +673,55 @@ function DashboardPage() {
                           Delete
                         </button>
                       </div>
-                      {tx.description && <p className="tx-desc">{tx.description}</p>}
+                      {tx.description && (
+                        <div className="tx-desc-wrap">
+                          <p className="tx-desc">{tx.description}</p>
+                          {parsedBreakdowns.has(tx._id) && (() => {
+                            const parsed = parsedBreakdowns.get(tx._id);
+                            if (!parsed) return null;
+                            const sum = parsed.total;
+                            const amount = Number(tx.amount || 0);
+                            const diff = amount - sum;
+                            const matches = Math.round(sum) === Math.round(amount);
+                            const expanded = !!descExpanded[tx._id];
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  className="link-btn small"
+                                  onClick={() => toggleDescExpanded(tx._id)}
+                                >
+                                  {expanded ? 'Hide breakdown' : 'Show breakdown'}
+                                </button>
+                                {expanded && (
+                                  <div className="desc-breakdown">
+                                    <ul className="desc-breakdown-list">
+                                      {parsed.items.map((item) => (
+                                        <li key={item.label} className="desc-breakdown-row">
+                                          <span className="desc-breakdown-label">{item.label}</span>
+                                          <span className="desc-breakdown-value">
+                                            ₹{item.value.toLocaleString('en-IN')}
+                                          </span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                    <p className="desc-breakdown-summary">
+                                      Breakdown total: ₹{sum.toLocaleString('en-IN')}{' '}
+                                      {matches ? (
+                                        <span className="desc-breakdown-ok">(matches entry amount)</span>
+                                      ) : (
+                                        <span className="desc-breakdown-mismatch">
+                                          (diff vs entry: ₹{diff.toLocaleString('en-IN')})
+                                        </span>
+                                      )}
+                                    </p>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -640,7 +731,11 @@ function DashboardPage() {
               <BalanceSheetSection year={year} month={month} />
             </div>
             <div className="charts-at-bottom">
-              <MonthlyCharts monthSummary={monthlySummary} comparison={monthlyComparison} />
+              <MonthlyCharts
+                monthSummary={monthlySummary}
+                comparison={monthlyComparison}
+                transactions={transactions}
+              />
             </div>
           </section>
         )}
