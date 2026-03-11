@@ -340,8 +340,12 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
     ],
   };
 
-  const totalInvestmentYear = monthly.reduce((s, m) => s + m.totalInvestment, 0);
-  const totalExpenseYear = monthly.reduce((s, m) => s + m.totalExpense, 0);
+  const totalInvestmentYear = monthly.reduce((s, m) => s + (m.totalInvestment || 0), 0);
+  const totalExpenseYear = monthly.reduce((s, m) => s + (m.totalExpense || 0), 0);
+  const totalYearAllMonths = monthly.reduce(
+    (s, m) => s + (m.totalInvestment || 0) + (m.totalExpense || 0),
+    0
+  );
 
   const maxInvestmentTag = Math.max(...(investmentTagBarData.datasets[0].data || [0]));
   const maxExpenseTag = Math.max(...(expenseTagBarData.datasets[0].data || [0]));
@@ -412,9 +416,7 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
 
   const optionsLine = {
     plugins: {
-      datalabels: {
-        display: false,
-      },
+      datalabels: { display: false },
     },
     scales: {
       x: { ticks: { color: '#9ca3af' } },
@@ -441,6 +443,47 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           <h3>Trend (line)</h3>
           <Line data={lineData} options={optionsLine} />
           <ChartTotal amount={totalInvestmentYear + totalExpenseYear} label="Year total" />
+          {monthly.length > 0 && (
+            <div className="chart-list-wrapper">
+              <p className="chart-list-title">Month breakdown · total and inv/exp split</p>
+              <ul className="chart-list">
+                {monthly.map((m) => {
+                  const label = new Date(2000, m.month - 1, 1).toLocaleString('default', {
+                    month: 'short',
+                  });
+                  const inv = m.totalInvestment || 0;
+                  const exp = m.totalExpense || 0;
+                  const monthTotal = inv + exp;
+                  const yearPct = totalYearAllMonths
+                    ? Math.round((monthTotal / totalYearAllMonths) * 100)
+                    : 0;
+                  const invPct = monthTotal ? Math.round((inv / monthTotal) * 100) : 0;
+                  const expPct = monthTotal ? 100 - invPct : 0;
+                  return (
+                    <li key={m.month} className="chart-list-row chart-month-row">
+                      <div className="chart-month-main">
+                        <span className="chart-list-label">{label}</span>
+                        <span className="chart-list-value">
+                          {formatAmount(monthTotal)}
+                          {yearPct ? ` (${yearPct}% of year)` : ''}
+                        </span>
+                      </div>
+                      {monthTotal > 0 && (
+                        <div className="chart-month-sub">
+                          <span className="chart-month-pill chart-month-pill-inv">
+                            Inv {formatAmount(inv)} ({invPct}%)
+                          </span>
+                          <span className="chart-month-pill chart-month-pill-exp">
+                            Exp {formatAmount(exp)} ({expPct}%)
+                          </span>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
         <div className="card chart-card" data-chart-title="Investment by category (year)">
           <h3>Investment by category (year)</h3>

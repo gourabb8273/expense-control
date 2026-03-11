@@ -749,41 +749,78 @@ function DashboardPage() {
               {yearlySummary && Array.isArray(yearlySummary.monthly) && (
                 <div className="card yearly-cashflow-card">
                   <h2>Year cashflow · {yearlySummary.year}</h2>
-                  <div className="year-cashflow-kpis">
-                    <div className="kpi">
-                      <span className="kpi-label">Total investment</span>
-                      <span className="kpi-value">
-                        ₹{yearlySummary.monthly.reduce((s, m) => s + m.totalInvestment, 0).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="kpi">
-                      <span className="kpi-label">Total expense</span>
-                      <span className="kpi-value">
-                        ₹{yearlySummary.monthly.reduce((s, m) => s + m.totalExpense, 0).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="kpi">
-                      <span className="kpi-label">Remaining balance</span>
-                      <span className={`kpi-value ${(yearlySummary.monthly.reduce((s, m) => s + m.totalInvestment, 0) - yearlySummary.monthly.reduce((s, m) => s + m.totalExpense, 0)) >= 0 ? 'positive' : 'negative'}`}>
-                        ₹{(yearlySummary.monthly.reduce((s, m) => s + m.totalInvestment, 0) - yearlySummary.monthly.reduce((s, m) => s + m.totalExpense, 0)).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="month-strip month-strip-net">
-                    {yearlySummary.monthly.map((m) => {
-                      const net = m.totalInvestment - m.totalExpense;
-                      return (
-                        <div key={m.month} className="month-pill">
-                          <span className="month-name">
-                            {new Date(2000, m.month - 1, 1).toLocaleString('default', { month: 'short' })}
-                          </span>
-                          <span className={`month-net ${net >= 0 ? 'positive' : 'negative'}`}>
-                            ₹{net.toLocaleString()}
-                          </span>
+                  {(() => {
+                    const yearlyInvestment = yearlySummary.monthly.reduce(
+                      (s, m) => s + m.totalInvestment,
+                      0
+                    );
+                    const yearlyExpense = yearlySummary.monthly.reduce(
+                      (s, m) => s + m.totalExpense,
+                      0
+                    );
+                    const yearlyCashflow = yearlyCashflowArray.reduce(
+                      (s, v) => s + (Number(v) || 0),
+                      0
+                    );
+                    const remaining =
+                      yearlyCashflow > 0
+                        ? yearlyCashflow - (yearlyInvestment + yearlyExpense)
+                        : yearlyInvestment - yearlyExpense;
+                    const remainingClass = remaining >= 0 ? 'positive' : 'negative';
+                    return (
+                      <>
+                        <div className="year-cashflow-kpis">
+                          <div className="kpi">
+                            <span className="kpi-label">Year cashflow from salary/income (sum of months)</span>
+                            <span className="kpi-value">
+                              ₹{yearlyCashflow.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <div className="kpi">
+                            <span className="kpi-label">Total investment (year)</span>
+                            <span className="kpi-value">
+                              ₹{yearlyInvestment.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <div className="kpi">
+                            <span className="kpi-label">Total expense (year)</span>
+                            <span className="kpi-value">
+                              ₹{yearlyExpense.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <div className="kpi">
+                            <span className="kpi-label">
+                              Remaining balance (cashflow − invest − expense)
+                            </span>
+                            <span className={`kpi-value ${remainingClass}`}>
+                              ₹{remaining.toLocaleString('en-IN')}
+                            </span>
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className="month-strip month-strip-net">
+                          {yearlySummary.monthly.map((m, idx) => {
+                            const net = m.totalInvestment - m.totalExpense;
+                            const cashflowForMonth = yearlyCashflowArray[idx] || 0;
+                            return (
+                              <div key={m.month} className="month-pill">
+                                <span className="month-name">
+                                  {new Date(2000, m.month - 1, 1).toLocaleString('default', {
+                                    month: 'short',
+                                  })}
+                                </span>
+                                <span className="month-values">
+                                  CF: ₹{cashflowForMonth.toLocaleString('en-IN')}
+                                </span>
+                                <span className={`month-net ${net >= 0 ? 'positive' : 'negative'}`}>
+                                  Net: ₹{net.toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
               <YearlySummary yearly={yearlySummary} />

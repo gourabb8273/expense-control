@@ -412,6 +412,42 @@
   gap: 0.5rem;
 }
 
+.chart-month-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+}
+
+.chart-month-main {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.chart-month-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+}
+
+.chart-month-pill {
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+}
+
+.chart-month-pill-inv {
+  background: rgba(34, 197, 94, 0.12);
+  color: #bbf7d0;
+}
+
+.chart-month-pill-exp {
+  background: rgba(248, 113, 113, 0.12);
+  color: #fecaca;
+}
+
 .chart-list-row-selected {
   background: rgba(59, 130, 246, 0.18);
   border-radius: 0.5rem;
