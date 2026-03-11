@@ -7,6 +7,7 @@ const morgan = require('morgan');
 const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 const reportRoutes = require('./routes/reports');
+const cashflowRoutes = require('./routes/cashflow');
 const categoryRoutes = require('./routes/categories');
 const balanceSheetRoutes = require('./routes/balanceSheet');
 
@@ -29,6 +30,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/balance-sheet', balanceSheetRoutes);
+app.use('/api/cashflow', cashflowRoutes);
 
 mongoose
   .connect(MONGODB_URI, {

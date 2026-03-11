@@ -51,54 +51,56 @@ function DashboardPage() {
   const [listFilter, setListFilter] = useState('all'); // 'all' | 'expense' | 'investment'
   const [searchQuery, setSearchQuery] = useState('');
 
-  const CASHFLOW_STORAGE_KEY = 'expense_control_monthly_cashflow';
-  const getCashflowKey = (y, m) => `${y}-${m}`;
-  const loadStoredCashflow = (y, m) => {
+  const [manualCashflow, setManualCashflow] = useState('');
+  const [yearlyCashflowArray, setYearlyCashflowArray] = useState(() => Array(12).fill(0));
+
+  const loadCashflowForMonth = async (y, m) => {
     try {
-      const raw = localStorage.getItem(CASHFLOW_STORAGE_KEY);
-      if (!raw) return '';
-      const obj = JSON.parse(raw);
-      const val = obj[getCashflowKey(y, m)];
-      return val !== undefined && val !== null && val !== '' ? String(val) : '';
-    } catch {
-      return '';
-    }
-  };
-  const saveStoredCashflow = (y, m, value) => {
-    try {
-      const raw = localStorage.getItem(CASHFLOW_STORAGE_KEY) || '{}';
-      const obj = JSON.parse(raw);
-      const num = value === '' ? null : Number(value);
-      if (num === null || isNaN(num)) delete obj[getCashflowKey(y, m)];
-      else obj[getCashflowKey(y, m)] = num;
-      localStorage.setItem(CASHFLOW_STORAGE_KEY, JSON.stringify(obj));
-    } catch (e) {
-      console.warn('Could not save cashflow', e);
+      const res = await api.get('/cashflow', { params: { year: y, month: m } });
+      const amount = res.data?.amount ?? 0;
+      setManualCashflow(amount ? String(amount) : '');
+    } catch (err) {
+      console.error('Failed to load cashflow for month', err);
+      setManualCashflow('');
     }
   };
 
-  const [manualCashflow, setManualCashflow] = useState(() => loadStoredCashflow(year, month));
+  const loadYearlyCashflowArray = async (y) => {
+    try {
+      const res = await api.get('/cashflow/year', { params: { year: y } });
+      const months = Array.isArray(res.data?.months) ? res.data.months : [];
+      const filled = [...months, ...Array(12).fill(0)].slice(0, 12).map((v) => Number(v) || 0);
+      setYearlyCashflowArray(filled);
+    } catch (err) {
+      console.error('Failed to load yearly cashflow', err);
+      setYearlyCashflowArray(Array(12).fill(0));
+    }
+  };
 
   useEffect(() => {
-    setManualCashflow(loadStoredCashflow(year, month));
+    loadCashflowForMonth(year, month);
+    loadYearlyCashflowArray(year);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month, year]);
 
-  const handleCashflowChange = (e) => {
+  const handleCashflowChange = async (e) => {
     const v = e.target.value;
     setManualCashflow(v);
-    saveStoredCashflow(year, month, v);
+    const num = v === '' ? 0 : Number(v) || 0;
+    try {
+      await api.put('/cashflow', { year, month, amount: num });
+      // refresh monthly and yearly cache
+      await loadYearlyCashflowArray(year);
+    } catch (err) {
+      console.error('Failed to save cashflow', err);
+    }
   };
 
   const getCashflowNum = (y, m) => {
-    const v = loadStoredCashflow(y, m);
-    return v === '' ? 0 : (Number(v) || 0);
+    const idx = m - 1;
+    if (y !== year || idx < 0 || idx >= yearlyCashflowArray.length) return 0;
+    return Number(yearlyCashflowArray[idx] || 0);
   };
-
-  const yearlyCashflowArray = (() => {
-    const arr = [];
-    for (let m = 1; m <= 12; m++) arr.push(getCashflowNum(year, m));
-    return arr;
-  })();
 
   const [descExpanded, setDescExpanded] = useState(() => ({}));
 
