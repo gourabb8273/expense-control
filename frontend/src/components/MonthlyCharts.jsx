@@ -58,13 +58,12 @@ function parseDescriptionBreakdown(description) {
   if (parts.length === 0) return null;
 
   const items = [];
-  const lineRegex = /^\s*([^-\n]+?)\s*-\s*([0-9]+(?:\.[0-9]+)?)\s*$/;
-
   parts.forEach((part) => {
-    const m = part.match(lineRegex);
-    if (!m) return;
-    const label = m[1].trim();
-    const value = Number(m[2]);
+    const idx = part.lastIndexOf('-');
+    if (idx === -1) return;
+    const label = part.slice(0, idx).trim();
+    const valueStr = part.slice(idx + 1).trim();
+    const value = Number(valueStr);
     if (!label || Number.isNaN(value)) return;
     items.push({ label, value });
   });
