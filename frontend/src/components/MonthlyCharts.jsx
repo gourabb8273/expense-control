@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { Doughnut, Pie, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -51,6 +52,74 @@ function CategoryList({ items, labelKey, valueKey }) {
   );
 }
 
+function TitleTagBreakdownCard({ title, breakdown, emptyText }) {
+  const tags = useMemo(
+    () => (Array.isArray(breakdown) ? breakdown.map((b) => b.tag).filter(Boolean) : []),
+    [breakdown]
+  );
+  const [selectedTag, setSelectedTag] = useState(() => tags[0] || '');
+
+  const effectiveSelectedTag = useMemo(() => {
+    if (selectedTag && tags.includes(selectedTag)) return selectedTag;
+    return tags[0] || '';
+  }, [selectedTag, tags]);
+
+  const selected = useMemo(() => {
+    if (!effectiveSelectedTag) return null;
+    return (breakdown || []).find((b) => b.tag === effectiveSelectedTag) || null;
+  }, [breakdown, effectiveSelectedTag]);
+
+  const items = useMemo(() => {
+    const types = selected?.types || [];
+    return types.map((t) => ({ type: t.label, total: t.total }));
+  }, [selected]);
+
+  const pieData = useMemo(
+    () => ({
+      labels: items.map((x) => x.type),
+      datasets: [
+        {
+          data: items.map((x) => x.total),
+          backgroundColor: PIE_COLORS,
+          borderWidth: 0,
+        },
+      ],
+    }),
+    [items]
+  );
+
+  return (
+    <div className="card chart-card" data-chart-title={title}>
+      <div className="chart-header-row">
+        <h3 style={{ marginBottom: 0 }}>{title}</h3>
+        {tags.length > 0 && (
+          <select
+            value={effectiveSelectedTag}
+            onChange={(e) => setSelectedTag(e.target.value)}
+            className="chart-select"
+            title="Select destination"
+          >
+            {tags.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+      {tags.length > 0 && items.length > 0 ? (
+        <>
+          <Pie data={pieData} options={{ plugins: { datalabels: { display: false } } }} />
+          <CategoryList items={items} labelKey="type" valueKey="total" />
+          <ChartTotal amount={items.reduce((s, x) => s + (x.total || 0), 0)} />
+        </>
+      ) : (
+        <p className="muted small">{emptyText}</p>
+      )}
+    </div>
+  );
+}
+
 function MonthlyCharts({ monthSummary, comparison }) {
   const {
     totalExpense = 0,
@@ -60,6 +129,8 @@ function MonthlyCharts({ monthSummary, comparison }) {
     expenseCategories = [],
     investmentByTag = [],
     expenseByTag = [],
+    investmentTitleTagBreakdown = [],
+    expenseTitleTagBreakdown = [],
   } = monthSummary || {};
 
   const hasData = totalExpense + totalInvestment > 0;
@@ -433,6 +504,16 @@ function MonthlyCharts({ monthSummary, comparison }) {
             <p className="muted small">Tag expense entries for this chart.</p>
           )}
         </div>
+        <TitleTagBreakdownCard
+          title="Expense by destination (title)"
+          breakdown={expenseTitleTagBreakdown}
+          emptyText="Use title like “puri - hotel” to see destination breakdown."
+        />
+        <TitleTagBreakdownCard
+          title="Investment by destination (title)"
+          breakdown={investmentTitleTagBreakdown}
+          emptyText="Use title like “gold - sip” to see destination breakdown."
+        />
         <div className="card chart-card chart-card-wide" data-chart-title="Top categories (all)">
           <h3>Top categories (all)</h3>
           {categoryBarLabels.length > 0 ? (

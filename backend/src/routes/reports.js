@@ -7,6 +7,71 @@ const router = express.Router();
 
 router.use(auth);
 
+function buildTitleTagPipelines({ userId, start, end, txType }) {
+  const baseMatch = {
+    userId,
+    date: { $gte: start, $lt: end },
+    type: txType,
+  };
+
+  const titleRegex = /^\s*([^-\n]+?)\s*-\s*([^-\n]+?)\s*$/;
+
+  const withParsed = [
+    { $match: baseMatch },
+    {
+      $addFields: {
+        _titleMatch: { $regexFind: { input: '$category', regex: titleRegex } },
+      },
+    },
+    { $match: { _titleMatch: { $ne: null } } },
+    {
+      $addFields: {
+        _titleTag: { $trim: { input: { $arrayElemAt: ['$_titleMatch.captures', 0] } } },
+        _titleType: { $trim: { input: { $arrayElemAt: ['$_titleMatch.captures', 1] } } },
+      },
+    },
+    { $match: { _titleTag: { $ne: '' }, _titleType: { $ne: '' } } },
+  ];
+
+  const byTag = [
+    ...withParsed,
+    { $group: { _id: '$_titleTag', total: { $sum: '$amount' } } },
+    { $sort: { total: -1 } },
+  ];
+
+  const byTagAndType = [
+    ...withParsed,
+    {
+      $group: {
+        _id: { tag: '$_titleTag', type: '$_titleType' },
+        total: { $sum: '$amount' },
+      },
+    },
+    { $sort: { '_id.tag': 1, total: -1 } },
+  ];
+
+  return { byTag, byTagAndType };
+}
+
+function reshapeTitleTagDetails(rows) {
+  const map = new Map();
+  rows.forEach((r) => {
+    const tag = r?._id?.tag;
+    const type = r?._id?.type;
+    const total = Number(r?.total || 0);
+    if (!tag || !type || total <= 0) return;
+    if (!map.has(tag)) map.set(tag, []);
+    map.get(tag).push({ label: type, total });
+  });
+  const out = Array.from(map.entries()).map(([tag, items]) => ({
+    tag,
+    total: items.reduce((s, x) => s + (x.total || 0), 0),
+    types: items.sort((a, b) => (b.total || 0) - (a.total || 0)),
+  }));
+  out.sort((a, b) => (b.total || 0) - (a.total || 0));
+  return out;
+}
+
 router.get('/monthly', async (req, res) => {
   try {
     const { year, month } = req.query;
@@ -110,6 +175,17 @@ router.get('/monthly', async (req, res) => {
       { $sort: { total: -1 } },
     ]);
 
+    const expenseTitlePipes = buildTitleTagPipelines({ userId, start, end, txType: 'expense' });
+    const investmentTitlePipes = buildTitleTagPipelines({ userId, start, end, txType: 'investment' });
+
+    const [expenseByTitleTag, expenseByTitleTagType, investmentByTitleTag, investmentByTitleTagType] =
+      await Promise.all([
+        Transaction.aggregate(expenseTitlePipes.byTag),
+        Transaction.aggregate(expenseTitlePipes.byTagAndType),
+        Transaction.aggregate(investmentTitlePipes.byTag),
+        Transaction.aggregate(investmentTitlePipes.byTagAndType),
+      ]);
+
     return res.json({
       month,
       year,
@@ -120,6 +196,10 @@ router.get('/monthly', async (req, res) => {
       expenseCategories: expenseCategories.map((c) => ({ category: c._id, total: c.total })),
       investmentByTag: investmentByTag.map((c) => ({ tag: c._id, total: c.total })),
       expenseByTag: expenseByTag.map((c) => ({ tag: c._id, total: c.total })),
+      investmentByTitleTag: investmentByTitleTag.map((c) => ({ tag: c._id, total: c.total })),
+      expenseByTitleTag: expenseByTitleTag.map((c) => ({ tag: c._id, total: c.total })),
+      investmentTitleTagBreakdown: reshapeTitleTagDetails(investmentByTitleTagType),
+      expenseTitleTagBreakdown: reshapeTitleTagDetails(expenseByTitleTagType),
     });
   } catch (err) {
     console.error('Monthly report error', err);
@@ -227,6 +307,17 @@ router.get('/yearly', async (req, res) => {
       { $sort: { total: -1 } },
     ]);
 
+    const expenseTitlePipes = buildTitleTagPipelines({ userId, start, end, txType: 'expense' });
+    const investmentTitlePipes = buildTitleTagPipelines({ userId, start, end, txType: 'investment' });
+
+    const [expenseByTitleTag, expenseByTitleTagType, investmentByTitleTag, investmentByTitleTagType] =
+      await Promise.all([
+        Transaction.aggregate(expenseTitlePipes.byTag),
+        Transaction.aggregate(expenseTitlePipes.byTagAndType),
+        Transaction.aggregate(investmentTitlePipes.byTag),
+        Transaction.aggregate(investmentTitlePipes.byTagAndType),
+      ]);
+
     const monthlySeries = [];
     for (let m = 1; m <= 12; m += 1) {
       const row = byMonth[m] || { expense: 0, investment: 0 };
@@ -245,6 +336,10 @@ router.get('/yearly', async (req, res) => {
       expenseCategories: expenseCategories.map((c) => ({ category: c._id, total: c.total })),
       investmentByTag: investmentByTag.map((c) => ({ tag: c._id, total: c.total })),
       expenseByTag: expenseByTag.map((c) => ({ tag: c._id, total: c.total })),
+      investmentByTitleTag: investmentByTitleTag.map((c) => ({ tag: c._id, total: c.total })),
+      expenseByTitleTag: expenseByTitleTag.map((c) => ({ tag: c._id, total: c.total })),
+      investmentTitleTagBreakdown: reshapeTitleTagDetails(investmentByTitleTagType),
+      expenseTitleTagBreakdown: reshapeTitleTagDetails(expenseByTitleTagType),
     });
   } catch (err) {
     console.error('Yearly report error', err);

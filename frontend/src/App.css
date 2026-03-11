@@ -322,6 +322,23 @@
   gap: 0.5rem;
 }
 
+.chart-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.chart-select {
+  max-width: 160px;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--input-text);
+  font-size: 0.8rem;
+}
+
 .chart-list-wrapper {
   margin-top: 0.4rem;
 }
