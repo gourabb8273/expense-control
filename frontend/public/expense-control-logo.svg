@@ -1,0 +1,18 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Expense Control</title>
+  <desc id="desc">Monogram EC inside a rounded card, representing expense tracking.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22c55e"/>
+      <stop offset="1" stop-color="#0ea5e9"/>
+    </linearGradient>
+  </defs>
+  <rect x="18" y="18" width="220" height="220" rx="48" fill="#020617"/>
+  <rect x="34" y="42" width="188" height="172" rx="32" fill="url(#bg)"/>
+  <rect x="50" y="60" width="156" height="136" rx="24" fill="rgba(15,23,42,0.92)"/>
+  <path d="M82 170c-14 0-24-10-24-24v-36c0-14 10-24 24-24h44" stroke="#a5b4fc" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M94 128h26" stroke="#a5b4fc" stroke-width="10" stroke-linecap="round"/>
+  <path d="M138 86h36c14 0 24 10 24 24 0 14-10 24-24 24h-18v36" stroke="#4ade80" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="120" cy="196" r="6" fill="#22c55e"/>
+  <circle cx="136" cy="196" r="6" fill="#f97316"/>
+</svg>
