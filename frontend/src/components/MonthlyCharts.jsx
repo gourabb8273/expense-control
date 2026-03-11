@@ -162,8 +162,15 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText, transactions = [],
     setSelectedType((prev) => (prev === typeLabel ? '' : typeLabel));
   };
 
+  const handleCardClick = (event) => {
+    const row = event.target.closest('.chart-list-row');
+    if (!row) {
+      setSelectedType('');
+    }
+  };
+
   return (
-    <div className="card chart-card" data-chart-title={title}>
+    <div className="card chart-card" data-chart-title={title} onClick={handleCardClick}>
       <div className="chart-header-row">
         <h3 style={{ marginBottom: 0 }}>{title}</h3>
         {tags.length > 0 && (
@@ -194,7 +201,7 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText, transactions = [],
                 return (
                   <li
                     key={item.type}
-                    className="chart-list-row"
+                    className={`chart-list-row${isSelected ? ' chart-list-row-selected' : ''}`}
                     style={{ cursor: 'pointer' }}
                     onClick={() => handleRowClick(item.type)}
                   >
@@ -212,6 +219,12 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText, transactions = [],
           <ChartTotal amount={items.reduce((s, x) => s + (x.total || 0), 0)} />
           {descriptionBreakdown && (
             <div className="desc-breakdown" style={{ marginTop: '0.4rem' }}>
+              <p className="desc-breakdown-title">
+                Breakdown for:&nbsp;
+                <strong>{effectiveSelectedTag || '-'}</strong>
+                {selectedType ? ` \u2013 ${selectedType}` : ''}
+                {txType ? ` (${txType})` : ''}
+              </p>
               <ul className="desc-breakdown-list">
                 {descriptionBreakdown.rows.map((row) => (
                   <li key={row.label} className="desc-breakdown-row">

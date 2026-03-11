@@ -340,6 +340,13 @@
   font-size: 0.75rem;
 }
 
+.desc-breakdown-title {
+  margin: 0 0 0.2rem 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
 .desc-breakdown-ok {
   color: var(--success, #22c55e);
 }
@@ -403,6 +410,16 @@
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
+}
+
+.chart-list-row-selected {
+  background: rgba(59, 130, 246, 0.18);
+  border-radius: 0.5rem;
+  padding: 0.2rem 0.4rem;
+}
+
+.chart-list-row-selected .chart-list-label {
+  color: var(--text);
 }
 
 .chart-list-label {
