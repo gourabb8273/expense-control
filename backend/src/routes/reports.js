@@ -186,11 +186,53 @@ router.get('/monthly', async (req, res) => {
         Transaction.aggregate(investmentTitlePipes.byTagAndType),
       ]);
 
+    const [essentialRow] = await Transaction.aggregate([
+      {
+        $match: {
+          userId,
+          date: { $gte: start, $lt: end },
+          type: 'expense',
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          essentialExpense: {
+            $sum: {
+              $cond: [{ $eq: ['$expenseEssential', 'essential'] }, '$amount', 0],
+            },
+          },
+          nonessentialExpense: {
+            $sum: {
+              $cond: [{ $eq: ['$expenseEssential', 'nonessential'] }, '$amount', 0],
+            },
+          },
+          uncategorizedExpense: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$expenseEssential', 'essential'] },
+                    { $ne: ['$expenseEssential', 'nonessential'] },
+                  ],
+                },
+                '$amount',
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
     return res.json({
       month,
       year,
       totalExpense: summary ? summary.totalExpense : 0,
       totalInvestment: summary ? summary.totalInvestment : 0,
+      essentialExpense: essentialRow ? essentialRow.essentialExpense : 0,
+      nonessentialExpense: essentialRow ? essentialRow.nonessentialExpense : 0,
+      uncategorizedExpense: essentialRow ? essentialRow.uncategorizedExpense : 0,
       categories: categories.map((c) => ({ category: c._id, total: c.total })),
       investmentCategories: investmentCategories.map((c) => ({ category: c._id, total: c.total })),
       expenseCategories: expenseCategories.map((c) => ({ category: c._id, total: c.total })),
@@ -318,13 +360,69 @@ router.get('/yearly', async (req, res) => {
         Transaction.aggregate(investmentTitlePipes.byTagAndType),
       ]);
 
+    const essentialByMonthRows = await Transaction.aggregate([
+      {
+        $match: {
+          userId,
+          date: { $gte: start, $lt: end },
+          type: 'expense',
+        },
+      },
+      {
+        $group: {
+          _id: { $month: '$date' },
+          essentialExpense: {
+            $sum: {
+              $cond: [{ $eq: ['$expenseEssential', 'essential'] }, '$amount', 0],
+            },
+          },
+          nonessentialExpense: {
+            $sum: {
+              $cond: [{ $eq: ['$expenseEssential', 'nonessential'] }, '$amount', 0],
+            },
+          },
+          uncategorizedExpense: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$expenseEssential', 'essential'] },
+                    { $ne: ['$expenseEssential', 'nonessential'] },
+                  ],
+                },
+                '$amount',
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    const essentialMap = {};
+    essentialByMonthRows.forEach((r) => {
+      essentialMap[r._id] = {
+        essentialExpense: r.essentialExpense || 0,
+        nonessentialExpense: r.nonessentialExpense || 0,
+        uncategorizedExpense: r.uncategorizedExpense || 0,
+      };
+    });
+
     const monthlySeries = [];
     for (let m = 1; m <= 12; m += 1) {
       const row = byMonth[m] || { expense: 0, investment: 0 };
+      const ess = essentialMap[m] || {
+        essentialExpense: 0,
+        nonessentialExpense: 0,
+        uncategorizedExpense: 0,
+      };
       monthlySeries.push({
         month: m,
         totalExpense: row.expense,
         totalInvestment: row.investment,
+        essentialExpense: ess.essentialExpense,
+        nonessentialExpense: ess.nonessentialExpense,
+        uncategorizedExpense: ess.uncategorizedExpense,
       });
     }
 

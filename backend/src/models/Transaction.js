@@ -37,6 +37,12 @@ const transactionSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    /** Only used when type is expense: optional essential vs non-essential classification. */
+    expenseEssential: {
+      type: String,
+      enum: ['essential', 'nonessential'],
+      required: false,
+    },
   },
   { timestamps: true }
 );

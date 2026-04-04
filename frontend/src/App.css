@@ -263,6 +263,22 @@
   border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
+.tx-essential-pill {
+  font-size: 0.65rem;
+  color: #7dd3fc;
+  background: rgba(14, 165, 233, 0.18);
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  margin-left: 0.25rem;
+  border: 1px solid rgba(14, 165, 233, 0.35);
+}
+
+.tx-essential-pill.nonessential {
+  color: #fdba74;
+  background: rgba(249, 115, 22, 0.15);
+  border-color: rgba(249, 115, 22, 0.35);
+}
+
 .tx-tag-select {
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
@@ -496,7 +512,6 @@
 
 .month-pill {
   min-width: 90px;
-  border-radius: 999px;
   border: 1px solid rgba(55, 65, 81, 0.9);
   padding: 0.3rem 0.5rem;
   display: flex;
@@ -515,6 +530,62 @@
 
 .month-net.positive { color: var(--success, #22c55e); }
 .month-net.negative { color: var(--danger, #ef4444); }
+
+.month-pill-ie {
+  min-width: 118px;
+  max-width: 160px;
+}
+
+.month-ie-line {
+  font-size: 0.7rem;
+  line-height: 1.25;
+  color: var(--text-muted, #9ca3af);
+}
+
+.month-ie-inv {
+  color: #86efac;
+  font-weight: 600;
+}
+
+.month-ie-exp {
+  color: #fdba74;
+  font-weight: 600;
+}
+
+.month-ie-summary {
+  display: block;
+  font-size: 0.68rem;
+  line-height: 1.3;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+
+.month-ie-summary.month-ie-positive {
+  color: var(--success, #22c55e);
+}
+
+.month-ie-summary.month-ie-negative {
+  color: var(--danger, #f87171);
+}
+
+.month-ie-summary.month-ie-neutral {
+  color: #9ca3af;
+}
+
+.month-after-cf {
+  display: block;
+  font-size: 0.65rem;
+  margin-top: 0.1rem;
+  font-weight: 600;
+}
+
+.month-after-cf.positive {
+  color: var(--success, #4ade80);
+}
+
+.month-after-cf.negative {
+  color: var(--danger, #fb923c);
+}
 .kpi-value.positive { color: var(--success, #22c55e); }
 .kpi-value.negative { color: var(--danger, #ef4444); }
 
@@ -569,7 +640,9 @@
   gap: 1rem;
   margin-bottom: 0.5rem;
 }
-.month-strip-net .month-pill { min-width: 80px; }
+.month-strip-net .month-pill.month-pill-ie {
+  min-width: 118px;
+}
 
 .list-filters {
   display: flex;
@@ -990,6 +1063,21 @@
   height: 260px;
 }
 
+.balance-sheet-line-chart {
+  height: 280px;
+}
+
+.balance-sheet-stack-chart {
+  height: 300px;
+}
+
+.balance-sheet-year-subtitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 1rem 0 0.35rem;
+  color: var(--text-muted, #9ca3af);
+}
+
 .balance-sheet-year-total {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
@@ -1024,6 +1112,70 @@
 
 .balance-sheet-year-table td.negative {
   color: #fca5a5;
+}
+
+.balance-sheet-year-table th.balance-sheet-debt-col,
+.balance-sheet-year-table td.balance-sheet-debt-cell {
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+.balance-sheet-mom-hint {
+  margin-top: 0.5rem;
+  margin-bottom: 0.35rem;
+  max-width: 52rem;
+}
+
+.balance-sheet-year-table td.balance-sheet-mom-cell {
+  vertical-align: top;
+  font-size: 0.8rem;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.balance-sheet-mom-main {
+  display: block;
+  font-weight: 700;
+}
+
+.balance-sheet-mom-pct {
+  display: block;
+  font-size: 0.72rem;
+  margin-top: 0.2rem;
+  font-weight: 600;
+  opacity: 0.95;
+}
+
+.balance-sheet-has-sub .balance-sheet-main-amt {
+  font-weight: 600;
+}
+
+.balance-sheet-pct-sub {
+  display: block;
+  font-size: 0.72rem;
+  margin-top: 0.2rem;
+  font-weight: 600;
+  color: var(--text-muted, #9ca3af);
+}
+
+.balance-sheet-pct-sub-debt {
+  color: #fca5a5;
+  opacity: 0.95;
+}
+
+.balance-sheet-mom-good {
+  font-weight: 700;
+  color: #86efac;
+}
+
+.balance-sheet-mom-bad {
+  font-weight: 700;
+  color: #fca5a5;
+}
+
+.balance-sheet-mom-neutral {
+  color: #9ca3af;
+  font-weight: 600;
 }
 
 @media (max-width: 640px) {

@@ -347,6 +347,48 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
     0
   );
 
+  const essentialYearEssential = monthly.reduce((s, m) => s + (m.essentialExpense || 0), 0);
+  const essentialYearNon = monthly.reduce((s, m) => s + (m.nonessentialExpense || 0), 0);
+  const essentialYearUn = monthly.reduce((s, m) => s + (m.uncategorizedExpense || 0), 0);
+  const essentialYearItems = [
+    { label: 'Essential', value: essentialYearEssential },
+    { label: 'Non-essential', value: essentialYearNon },
+    { label: 'Not tagged', value: essentialYearUn },
+  ];
+  const essentialYearPieData = {
+    labels: essentialYearItems.map((x) => x.label),
+    datasets: [
+      {
+        data: essentialYearItems.map((x) => x.value),
+        backgroundColor: ['#0ea5e9', '#f97316', '#6b7280'],
+        borderWidth: 0,
+      },
+    ],
+  };
+  const essentialStackData = {
+    labels: monthLabels,
+    datasets: [
+      {
+        label: 'Essential',
+        data: monthly.map((m) => m.essentialExpense || 0),
+        backgroundColor: '#0ea5e9',
+        stack: 'ess',
+      },
+      {
+        label: 'Non-essential',
+        data: monthly.map((m) => m.nonessentialExpense || 0),
+        backgroundColor: '#f97316',
+        stack: 'ess',
+      },
+      {
+        label: 'Not tagged',
+        data: monthly.map((m) => m.uncategorizedExpense || 0),
+        backgroundColor: '#6b7280',
+        stack: 'ess',
+      },
+    ],
+  };
+
   const maxInvestmentTag = Math.max(...(investmentTagBarData.datasets[0].data || [0]));
   const maxExpenseTag = Math.max(...(expenseTagBarData.datasets[0].data || [0]));
   const makeTagAxisMax = (maxValue) => {
@@ -414,6 +456,24 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
     },
   };
 
+  const essentialStackOptions = {
+    ...optionsBarGrouped,
+    plugins: {
+      ...optionsBarGrouped.plugins,
+      legend: { display: true, position: 'bottom' },
+    },
+    scales: {
+      x: {
+        ...optionsBarGrouped.scales.x,
+        stacked: true,
+      },
+      y: {
+        ...optionsBarGrouped.scales.y,
+        stacked: true,
+      },
+    },
+  };
+
   const optionsLine = {
     plugins: {
       datalabels: { display: false },
@@ -438,6 +498,29 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           <h3>Per month · Investment vs Expense</h3>
           <Bar data={barData} options={optionsBarGrouped} />
           <ChartTotal amount={totalInvestmentYear + totalExpenseYear} label="Year total" />
+        </div>
+        <div className="card chart-card chart-card-wide" data-chart-title="Expense · essential per month">
+          <h3>Expense · essential vs non-essential (per month)</h3>
+          {totalExpenseYear > 0 ? (
+            <>
+              <Bar data={essentialStackData} options={essentialStackOptions} />
+              <ChartTotal amount={totalExpenseYear} label="Year expense total" />
+            </>
+          ) : (
+            <p className="muted small">No expense data this year.</p>
+          )}
+        </div>
+        <div className="card chart-card" data-chart-title="Expense · essential (year)">
+          <h3>Expense · essential split (year)</h3>
+          {totalExpenseYear > 0 ? (
+            <>
+              <Pie data={essentialYearPieData} options={optionsPie} />
+              <CategoryList items={essentialYearItems} labelKey="label" valueKey="value" />
+              <ChartTotal amount={totalExpenseYear} label="Year expense total" />
+            </>
+          ) : (
+            <p className="muted small">No expense data this year.</p>
+          )}
         </div>
         <div className="card chart-card" data-chart-title="Trend (line)">
           <h3>Trend (line)</h3>

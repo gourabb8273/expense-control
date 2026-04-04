@@ -22,25 +22,37 @@ function BalanceSheetSection({ year, month, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const load = async () => {
-    if (!year || !month) return;
+  useEffect(() => {
+    if (!year || !month) return undefined;
+    let cancelled = false;
     setLoading(true);
     setError('');
-    try {
-      const res = await api.get('/balance-sheet', { params: { year, month } });
-      setAssets(res.data.assets || []);
-      setDebts(res.data.debts || []);
-      setCarriedFrom(res.data.carriedFrom || null);
-      setSaved(res.data.saved || false);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load balance sheet');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
+    const cloneItems = (list) =>
+      (list || []).map((i) => ({
+        name: i.name ?? '',
+        value: Number(i.value) || 0,
+      }));
+    (async () => {
+      try {
+        const res = await api.get('/balance-sheet', { params: { year, month } });
+        if (cancelled) return;
+        setAssets(cloneItems(res.data.assets));
+        setDebts(cloneItems(res.data.debts));
+        setCarriedFrom(res.data.carriedFrom || null);
+        setSaved(res.data.saved || false);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.response?.data?.message || 'Failed to load balance sheet');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [year, month]);
 
   const totalAssets = assets.reduce((s, i) => s + (Number(i.value) || 0), 0);

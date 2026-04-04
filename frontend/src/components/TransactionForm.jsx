@@ -7,6 +7,7 @@ function TransactionForm({ onCreated, staticCategories = [] }) {
   const [tag, setTag] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [expenseEssential, setExpenseEssential] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -36,19 +37,24 @@ function TransactionForm({ onCreated, staticCategories = [] }) {
     setLoading(true);
     setError('');
     try {
-      await onCreated({
+      const payload = {
         type,
         amount: Number(amount),
         category,
         tag: tag || undefined,
         description,
         date,
-      });
+      };
+      if (type === 'expense' && (expenseEssential === 'essential' || expenseEssential === 'nonessential')) {
+        payload.expenseEssential = expenseEssential;
+      }
+      await onCreated(payload);
       setType('expense');
       setAmount('');
       setCategory('');
       setTag('');
       setDescription('');
+      setExpenseEssential('');
       setDate(new Date().toISOString().slice(0, 10));
     } catch (err) {
       setError(err.message || 'Could not save transaction');
@@ -65,7 +71,13 @@ function TransactionForm({ onCreated, staticCategories = [] }) {
       <div className="step">
         <label className="field inline">
           <span>Type</span>
-          <select value={type} onChange={(e) => setType(e.target.value)}>
+          <select
+            value={type}
+            onChange={(e) => {
+              setType(e.target.value);
+              if (e.target.value !== 'expense') setExpenseEssential('');
+            }}
+          >
             <option value="expense">Expense</option>
             <option value="investment">Investment</option>
           </select>
@@ -115,6 +127,20 @@ function TransactionForm({ onCreated, staticCategories = [] }) {
             placeholder="Short note for yourself"
           />
         </label>
+        {type === 'expense' && (
+          <label className="field">
+            <span>Essential? (optional)</span>
+            <select
+              value={expenseEssential}
+              onChange={(e) => setExpenseEssential(e.target.value)}
+            >
+              <option value="">— Not set —</option>
+              <option value="essential">Essential (e.g. rent, bills)</option>
+              <option value="nonessential">Non-essential</option>
+            </select>
+            <span className="field-hint">Used for essential vs non-essential expense charts.</span>
+          </label>
+        )}
         <label className="field">
           <span>Date</span>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />

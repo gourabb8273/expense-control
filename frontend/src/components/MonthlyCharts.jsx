@@ -259,6 +259,9 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
   const {
     totalExpense = 0,
     totalInvestment = 0,
+    essentialExpense = 0,
+    nonessentialExpense = 0,
+    uncategorizedExpense = 0,
     categories = [],
     investmentCategories = [],
     expenseCategories = [],
@@ -329,6 +332,22 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
       {
         data: expenseCategories.map((c) => c.total),
         backgroundColor: PIE_COLORS,
+        borderWidth: 0,
+      },
+    ],
+  };
+
+  const essentialExpenseItems = [
+    { label: 'Essential', value: essentialExpense },
+    { label: 'Non-essential', value: nonessentialExpense },
+    { label: 'Not tagged', value: uncategorizedExpense },
+  ];
+  const essentialExpensePieData = {
+    labels: essentialExpenseItems.map((x) => x.label),
+    datasets: [
+      {
+        data: essentialExpenseItems.map((x) => x.value),
+        backgroundColor: ['#0ea5e9', '#f97316', '#6b7280'],
         borderWidth: 0,
       },
     ],
@@ -589,6 +608,21 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
             </>
           ) : (
             <p className="muted small">No expense entries this month.</p>
+          )}
+        </div>
+        <div className="card chart-card" data-chart-title="Expense · essential split">
+          <h3>Expense · essential vs non-essential</h3>
+          {totalExpense > 0 ? (
+            <>
+              <Pie data={essentialExpensePieData} options={optionsPie} />
+              <CategoryList items={essentialExpenseItems} labelKey="label" valueKey="value" />
+              <ChartTotal amount={totalExpense} label="Expense total" />
+              {(essentialExpense === 0 && nonessentialExpense === 0) && (
+                <p className="muted small">Mark expenses as essential or non-essential when adding or editing.</p>
+              )}
+            </>
+          ) : (
+            <p className="muted small">No expense this month.</p>
           )}
         </div>
         <div className="card chart-card" data-chart-title="By category (all)">

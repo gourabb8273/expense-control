@@ -27,9 +27,15 @@ router.get('/', async (req, res) => {
   }
 });
 
+function normalizeExpenseEssential(type, raw) {
+  if (type !== 'expense') return undefined;
+  if (raw === 'essential' || raw === 'nonessential') return raw;
+  return undefined;
+}
+
 router.post('/', async (req, res) => {
   try {
-    const { type, amount, category, description, date, tag } = req.body;
+    const { type, amount, category, description, date, tag, expenseEssential } = req.body;
     if (!type || !amount || !category || !date) {
       return res.status(400).json({ message: 'type, amount, category, and date are required' });
     }
@@ -42,6 +48,7 @@ router.post('/', async (req, res) => {
       tag: tag ? String(tag).trim() : '',
       description: description || '',
       date: new Date(date),
+      expenseEssential: normalizeExpenseEssential(type, expenseEssential),
     });
 
     return res.status(201).json({ transaction: tx });
@@ -54,24 +61,33 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, amount, category, description, date, tag } = req.body;
+    const { type, amount, category, description, date, tag, expenseEssential } = req.body;
 
     if (!type || !amount || !category || !date) {
       return res.status(400).json({ message: 'type, amount, category, and date are required' });
     }
 
-    const updated = await Transaction.findOneAndUpdate(
-      { _id: id, userId: req.user.id },
-      {
-        type,
-        amount,
-        category,
-        tag: tag ? String(tag).trim() : '',
-        description: description || '',
-        date: new Date(date),
-      },
-      { new: true }
-    );
+    const base = {
+      type,
+      amount,
+      category,
+      tag: tag ? String(tag).trim() : '',
+      description: description || '',
+      date: new Date(date),
+    };
+
+    let updateOp;
+    if (type === 'investment') {
+      updateOp = { $set: base, $unset: { expenseEssential: '' } };
+    } else if (expenseEssential === 'essential' || expenseEssential === 'nonessential') {
+      updateOp = { $set: { ...base, expenseEssential } };
+    } else {
+      updateOp = { $set: base, $unset: { expenseEssential: '' } };
+    }
+
+    const updated = await Transaction.findOneAndUpdate({ _id: id, userId: req.user.id }, updateOp, {
+      new: true,
+    });
 
     if (!updated) {
       return res.status(404).json({ message: 'Transaction not found' });

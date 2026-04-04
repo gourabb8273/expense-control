@@ -50,6 +50,7 @@ function DashboardPage() {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [listFilter, setListFilter] = useState('all'); // 'all' | 'expense' | 'investment'
   const [searchQuery, setSearchQuery] = useState('');
+  const [balanceSheetRefreshKey, setBalanceSheetRefreshKey] = useState(0);
 
   const [manualCashflow, setManualCashflow] = useState('');
   const [yearlyCashflowArray, setYearlyCashflowArray] = useState(() => Array(12).fill(0));
@@ -182,6 +183,9 @@ function DashboardPage() {
       description: editingTx.description || '',
       date: editingTx.dateInput,
     };
+    if (editingTx.type === 'expense') {
+      payload.expenseEssential = editingTx.expenseEssential || '';
+    }
     await api.put(`/transactions/${editingTx._id}`, payload);
     setEditingTx(null);
     await loadData(month, year);
@@ -244,14 +248,18 @@ function DashboardPage() {
   const handleTagChange = async (tx, newTag) => {
     const dateStr = new Date(tx.date).toISOString().slice(0, 10);
     try {
-      await api.put(`/transactions/${tx._id}`, {
+      const body = {
         type: tx.type,
         amount: tx.amount,
         category: tx.category,
         tag: newTag || undefined,
         description: tx.description || '',
         date: dateStr,
-      });
+      };
+      if (tx.type === 'expense') {
+        body.expenseEssential = tx.expenseEssential || '';
+      }
+      await api.put(`/transactions/${tx._id}`, body);
       await loadData(month, year);
     } catch (err) {
       console.error('Failed to update tag', err);
@@ -602,6 +610,19 @@ function DashboardPage() {
                             <option key={c._id} value={c.name}>{c.name}</option>
                           ))}
                       </select>
+                      {editingTx.type === 'expense' && (
+                        <select
+                          value={editingTx.expenseEssential || ''}
+                          onChange={(e) =>
+                            setEditingTx({ ...editingTx, expenseEssential: e.target.value })
+                          }
+                          title="Essential vs non-essential"
+                        >
+                          <option value="">Essential? — not set</option>
+                          <option value="essential">Essential</option>
+                          <option value="nonessential">Non-essential</option>
+                        </select>
+                      )}
                       <input
                         type="text"
                         value={editingTx.description || ''}
@@ -641,6 +662,12 @@ function DashboardPage() {
                         </span>
                         <span className="tx-category">{tx.category}</span>
                         {tx.tag && <span className="tx-tag">#{tx.tag}</span>}
+                        {tx.type === 'expense' && tx.expenseEssential === 'essential' && (
+                          <span className="tx-essential-pill">Essential</span>
+                        )}
+                        {tx.type === 'expense' && tx.expenseEssential === 'nonessential' && (
+                          <span className="tx-essential-pill nonessential">Non-essential</span>
+                        )}
                     </div>
                     <div className="tx-meta">
                         <span className="tx-amount">₹{tx.amount.toLocaleString()}</span>
@@ -733,7 +760,11 @@ function DashboardPage() {
               </div>
             </div>
             <div className="balance-sheet-month-wrap">
-              <BalanceSheetSection year={year} month={month} />
+              <BalanceSheetSection
+                year={year}
+                month={month}
+                onSaved={() => setBalanceSheetRefreshKey((k) => k + 1)}
+              />
             </div>
             <div className="charts-at-bottom">
               <MonthlyCharts
@@ -801,10 +832,29 @@ function DashboardPage() {
                         </div>
                         <div className="month-strip month-strip-net">
                           {yearlySummary.monthly.map((m, idx) => {
-                            const net = m.totalInvestment - m.totalExpense;
+                            const inv = m.totalInvestment || 0;
+                            const exp = m.totalExpense || 0;
+                            const diff = inv - exp;
+                            const diffAbs = Math.abs(diff);
                             const cashflowForMonth = yearlyCashflowArray[idx] || 0;
+                            const monthRemaining =
+                              cashflowForMonth > 0
+                                ? cashflowForMonth - inv - exp
+                                : null;
+                            let summaryText;
+                            let summaryClass = 'month-ie-neutral';
+                            if (diff > 0) {
+                              summaryText = `Invest ahead by ₹${diffAbs.toLocaleString('en-IN')}`;
+                              summaryClass = 'month-ie-positive';
+                            } else if (diff < 0) {
+                              summaryText = `Expenses ahead by ₹${diffAbs.toLocaleString('en-IN')}`;
+                              summaryClass = 'month-ie-negative';
+                            } else {
+                              summaryText = 'Invest & expense matched';
+                              summaryClass = 'month-ie-neutral';
+                            }
                             return (
-                              <div key={m.month} className="month-pill">
+                              <div key={m.month} className="month-pill month-pill-ie">
                                 <span className="month-name">
                                   {new Date(2000, m.month - 1, 1).toLocaleString('default', {
                                     month: 'short',
@@ -813,9 +863,22 @@ function DashboardPage() {
                                 <span className="month-values">
                                   CF: ₹{cashflowForMonth.toLocaleString('en-IN')}
                                 </span>
-                                <span className={`month-net ${net >= 0 ? 'positive' : 'negative'}`}>
-                                  Net: ₹{net.toLocaleString('en-IN')}
+                                <span className="month-ie-line">
+                                  <span className="month-ie-inv">Inv ₹{inv.toLocaleString('en-IN')}</span>
+                                  <span className="month-ie-sep"> · </span>
+                                  <span className="month-ie-exp">Exp ₹{exp.toLocaleString('en-IN')}</span>
                                 </span>
+                                <span className={`month-ie-summary ${summaryClass}`} title="Investment minus expense for this month (cashflow is separate above).">
+                                  {summaryText}
+                                </span>
+                                {monthRemaining != null && (
+                                  <span
+                                    className={`month-after-cf ${monthRemaining >= 0 ? 'positive' : 'negative'}`}
+                                    title="Cashflow you entered this month, minus investment and expense."
+                                  >
+                                    After CF: ₹{monthRemaining.toLocaleString('en-IN')}
+                                  </span>
+                                )}
                               </div>
                             );
                           })}
@@ -826,7 +889,7 @@ function DashboardPage() {
                 </div>
               )}
               <YearlySummary yearly={yearlySummary} />
-              <BalanceSheetYearSection year={year} />
+              <BalanceSheetYearSection year={year} refreshKey={balanceSheetRefreshKey} />
             </div>
             <div className="charts-at-bottom">
               <YearlyCharts yearly={yearlySummary} yearlyCashflow={yearlyCashflowArray} />
