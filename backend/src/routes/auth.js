@@ -2,6 +2,8 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const Cashflow = require('../models/Cashflow');
+const auth = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -27,12 +29,18 @@ router.post('/login', async (req, res) => {
       expiresIn: '365d',
     });
 
+    const lastKnownSalary = await Cashflow.getLastKnownSalary(user._id);
+    const defaultMonthlySalary = user.defaultMonthlySalary || 0;
+
     return res.json({
       token,
       user: {
         id: user._id,
         email: user.email,
         name: user.name,
+        defaultMonthlySalary,
+        suggestedDefaultSalary: defaultMonthlySalary || lastKnownSalary || 0,
+        lastKnownSalary,
       },
     });
   } catch (err) {
@@ -92,6 +100,65 @@ router.post('/seed-demo2-user', async (req, res) => {
     });
   } catch (err) {
     console.error('Seed demo2 user error', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.get('/me', auth, async (req, res) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+    const [user, lastKnownSalary] = await Promise.all([
+      User.findById(req.user.id).select('-passwordHash'),
+      Cashflow.getLastKnownSalary(userId),
+    ]);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const defaultMonthlySalary = user.defaultMonthlySalary || 0;
+    return res.json({
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        defaultMonthlySalary,
+        suggestedDefaultSalary: defaultMonthlySalary || lastKnownSalary || 0,
+        lastKnownSalary,
+      },
+    });
+  } catch (err) {
+    console.error('Get profile error', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.patch('/me', auth, async (req, res) => {
+  try {
+    const { defaultMonthlySalary } = req.body;
+    if (defaultMonthlySalary == null) {
+      return res.status(400).json({ message: 'defaultMonthlySalary is required' });
+    }
+    const val = Number(defaultMonthlySalary);
+    if (Number.isNaN(val) || val < 0) {
+      return res.status(400).json({ message: 'Invalid defaultMonthlySalary' });
+    }
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { defaultMonthlySalary: val },
+      { new: true }
+    ).select('-passwordHash');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    return res.json({
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        defaultMonthlySalary: user.defaultMonthlySalary || 0,
+      },
+    });
+  } catch (err) {
+    console.error('Update profile error', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 });

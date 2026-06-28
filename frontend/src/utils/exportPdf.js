@@ -50,7 +50,7 @@ function addChartImagesToPdf(doc, chartImages, startY) {
   return y;
 }
 
-export async function exportMonthlyPdf({ year, month, monthlySummary, transactions, api, chartImages, cashflow = 0 }) {
+export async function exportMonthlyPdf({ year, month, monthlySummary, transactions, api, chartImages, cashflow = 0, inflows = [] }) {
   const doc = new jsPDF();
   const monthLabel = MONTH_NAMES[month] || month;
   const ms = monthlySummary || {};
@@ -77,11 +77,23 @@ export async function exportMonthlyPdf({ year, month, monthlySummary, transactio
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Month cashflow', MARGIN, y);
+  doc.text('Month cash inflow', MARGIN, y);
   doc.setFont('helvetica', 'normal');
   y += 7;
-  doc.text(`Cashflow (in bank): ${RU}${cashflowNum.toLocaleString('en-IN')}`, MARGIN, y);
-  y += 6;
+  const inflowRows = Array.isArray(inflows) && inflows.length > 0
+    ? inflows
+    : [{ label: 'Salary', amount: cashflowNum }];
+  inflowRows.forEach((row) => {
+    const amt = Number(row.amount) || 0;
+    if (amt > 0 || inflowRows.length === 1) {
+      doc.text(`${row.label || 'Inflow'}: ${RU}${amt.toLocaleString('en-IN')}`, MARGIN, y);
+      y += 6;
+    }
+  });
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Total cash inflow: ${RU}${cashflowNum.toLocaleString('en-IN')}`, MARGIN, y);
+  doc.setFont('helvetica', 'normal');
+  y += 8;
   doc.text(`Expense: ${RU}${totalExp.toLocaleString('en-IN')}`, MARGIN, y);
   y += 6;
   doc.text(`Investment: ${RU}${totalInv.toLocaleString('en-IN')}`, MARGIN, y);
@@ -277,7 +289,7 @@ export async function exportYearlyPdf({ year, yearlySummary, api, chartImages, y
   doc.text('Year cashflow', MARGIN, y);
   doc.setFont('helvetica', 'normal');
   y += 7;
-  doc.text(`Total cashflow (entered): ${RU}${totalCashflow.toLocaleString('en-IN')}`, MARGIN, y);
+  doc.text(`Total cash inflow (entered): ${RU}${totalCashflow.toLocaleString('en-IN')}`, MARGIN, y);
   y += 6;
   doc.text(`Total investment: ${RU}${totalInv.toLocaleString('en-IN')}`, MARGIN, y);
   y += 6;
@@ -315,7 +327,7 @@ export async function exportYearlyPdf({ year, yearlySummary, api, chartImages, y
   });
   autoTable(doc, {
     startY: y,
-    head: [['Month', `Cashflow (${RU})`, `Investment (${RU})`, `Expense (${RU})`, `Total (${RU})`, `Remaining (${RU})`]],
+    head: [['Month', `Inflow (${RU})`, `Investment (${RU})`, `Expense (${RU})`, `Total (${RU})`, `Remaining (${RU})`]],
     body: monthRows,
     theme: 'striped',
     headStyles: { fillColor: [15, 23, 42] },

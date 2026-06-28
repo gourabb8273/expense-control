@@ -32,12 +32,16 @@ export function AuthProvider({ children }) {
     setUser(res.data.user);
   };
 
+  const updateUser = (nextUser) => {
+    setUser((prev) => ({ ...prev, ...nextUser }));
+  };
+
   const logout = () => {
     setToken('');
     setUser(null);
   };
 
-  const value = { token, user, login, logout };
+  const value = { token, user, login, logout, updateUser };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -13,6 +13,7 @@ import {
   Filler,
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
+import CollapsibleChartCard from './CollapsibleChartCard';
 
 ChartJS.register(
   CategoryScale,
@@ -132,6 +133,108 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText }) {
   );
 }
 
+function YearlyTrendChart({ yearly }) {
+  if (!yearly?.monthly?.length) return null;
+
+  const { monthly = [] } = yearly;
+  const hasData = monthly.some((m) => (m.totalInvestment || 0) > 0 || (m.totalExpense || 0) > 0);
+  if (!hasData) return null;
+
+  const monthLabels = monthly.map((m) =>
+    new Date(2000, m.month - 1, 1).toLocaleString('default', { month: 'short' })
+  );
+
+  const lineData = {
+    labels: monthLabels,
+    datasets: [
+      {
+        label: 'Investment',
+        data: monthly.map((m) => m.totalInvestment),
+        borderColor: '#22c55e',
+        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        fill: true,
+        tension: 0.3,
+      },
+      {
+        label: 'Expense',
+        data: monthly.map((m) => m.totalExpense),
+        borderColor: '#f97316',
+        backgroundColor: 'rgba(249, 115, 22, 0.1)',
+        fill: true,
+        tension: 0.3,
+      },
+    ],
+  };
+
+  const optionsLine = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      datalabels: { display: false },
+      legend: { position: 'bottom' },
+    },
+    scales: {
+      x: { ticks: { color: '#9ca3af' } },
+      y: { ticks: { color: '#9ca3af' } },
+    },
+  };
+
+  const totalInvestmentYear = monthly.reduce((s, m) => s + (m.totalInvestment || 0), 0);
+  const totalExpenseYear = monthly.reduce((s, m) => s + (m.totalExpense || 0), 0);
+  const totalYearAllMonths = totalInvestmentYear + totalExpenseYear;
+
+  return (
+    <div className="charts-section yearly-charts yearly-trend-top">
+      <div className="card chart-card chart-card-wide" data-chart-title="Trend (line)">
+        <h3>Trend (line)</h3>
+        <div className="chart-wrap chart-wrap-line">
+          <Line data={lineData} options={optionsLine} />
+        </div>
+        <ChartTotal amount={totalYearAllMonths} label="Year total" />
+        <div className="chart-list-wrapper">
+          <p className="chart-list-title">Month breakdown · total and inv/exp split</p>
+          <ul className="chart-list">
+            {monthly.map((m) => {
+              const label = new Date(2000, m.month - 1, 1).toLocaleString('default', {
+                month: 'short',
+              });
+              const inv = m.totalInvestment || 0;
+              const exp = m.totalExpense || 0;
+              const monthTotal = inv + exp;
+              const yearPct = totalYearAllMonths
+                ? Math.round((monthTotal / totalYearAllMonths) * 100)
+                : 0;
+              const invPct = monthTotal ? Math.round((inv / monthTotal) * 100) : 0;
+              const expPct = monthTotal ? 100 - invPct : 0;
+              return (
+                <li key={m.month} className="chart-list-row chart-month-row">
+                  <div className="chart-month-main">
+                    <span className="chart-list-label">{label}</span>
+                    <span className="chart-list-value">
+                      {formatAmount(monthTotal)}
+                      {yearPct ? ` (${yearPct}% of year)` : ''}
+                    </span>
+                  </div>
+                  {monthTotal > 0 && (
+                    <div className="chart-month-sub">
+                      <span className="chart-month-pill chart-month-pill-inv">
+                        Inv {formatAmount(inv)} ({invPct}%)
+                      </span>
+                      <span className="chart-month-pill chart-month-pill-exp">
+                        Exp {formatAmount(exp)} ({expPct}%)
+                      </span>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function YearlyCharts({ yearly, yearlyCashflow }) {
   if (!yearly) {
     return null;
@@ -164,7 +267,7 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
     labels: allMonthLabels,
     datasets: [
       {
-        label: 'Cashflow (entered)',
+        label: 'Cash inflow',
         data: cashflowValues,
         backgroundColor: '#3b82f6',
         maxBarThickness: 20,
@@ -212,28 +315,6 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
         data: monthly.map((m) => m.totalExpense),
         backgroundColor: '#f97316',
         maxBarThickness: 22,
-      },
-    ],
-  };
-
-  const lineData = {
-    labels: monthLabels,
-    datasets: [
-      {
-        label: 'Investment',
-        data: monthly.map((m) => m.totalInvestment),
-        borderColor: '#22c55e',
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-        fill: true,
-        tension: 0.3,
-      },
-      {
-        label: 'Expense',
-        data: monthly.map((m) => m.totalExpense),
-        borderColor: '#f97316',
-        backgroundColor: 'rgba(249, 115, 22, 0.1)',
-        fill: true,
-        tension: 0.3,
       },
     ],
   };
@@ -342,10 +423,6 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
 
   const totalInvestmentYear = monthly.reduce((s, m) => s + (m.totalInvestment || 0), 0);
   const totalExpenseYear = monthly.reduce((s, m) => s + (m.totalExpense || 0), 0);
-  const totalYearAllMonths = monthly.reduce(
-    (s, m) => s + (m.totalInvestment || 0) + (m.totalExpense || 0),
-    0
-  );
 
   const essentialYearEssential = monthly.reduce((s, m) => s + (m.essentialExpense || 0), 0);
   const essentialYearNon = monthly.reduce((s, m) => s + (m.nonessentialExpense || 0), 0);
@@ -474,33 +551,20 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
     },
   };
 
-  const optionsLine = {
-    plugins: {
-      datalabels: { display: false },
-    },
-    scales: {
-      x: { ticks: { color: '#9ca3af' } },
-      y: { ticks: { color: '#9ca3af' } },
-    },
-  };
-
   const yearCashflowTotal = cashflowValues.reduce((s, v) => s + v, 0);
 
   return (
     <div className="charts-section yearly-charts">
       <div className="charts-grid">
-        <div className="card chart-card chart-card-wide" data-chart-title="Year cashflow">
-          <h3>Year cashflow (Cashflow entered · Investment · Expense)</h3>
+        <CollapsibleChartCard title="Year cash inflow (Inflow · Investment · Expense)" chartTitle="Year cash inflow" wide>
           <Bar data={yearCashflowBarData} options={{ ...optionsBarGrouped, plugins: { ...optionsBarGrouped.plugins, legend: { display: true, position: 'bottom' } } }} />
-          <ChartTotal amount={yearCashflowTotal} label="Cashflow total (entered)" />
-        </div>
-        <div className="card chart-card" data-chart-title="Per month · Investment vs Expense">
-          <h3>Per month · Investment vs Expense</h3>
+          <ChartTotal amount={yearCashflowTotal} label="Total cash inflow (entered)" />
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Per month · Investment vs Expense" chartTitle="Per month · Investment vs Expense">
           <Bar data={barData} options={optionsBarGrouped} />
           <ChartTotal amount={totalInvestmentYear + totalExpenseYear} label="Year total" />
-        </div>
-        <div className="card chart-card chart-card-wide" data-chart-title="Expense · essential per month">
-          <h3>Expense · essential vs non-essential (per month)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Expense · essential vs non-essential (per month)" chartTitle="Expense · essential per month" wide>
           {totalExpenseYear > 0 ? (
             <>
               <Bar data={essentialStackData} options={essentialStackOptions} />
@@ -509,7 +573,7 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           ) : (
             <p className="muted small">No expense data this year.</p>
           )}
-        </div>
+        </CollapsibleChartCard>
         <div className="card chart-card" data-chart-title="Expense · essential (year)">
           <h3>Expense · essential split (year)</h3>
           {totalExpenseYear > 0 ? (
@@ -520,52 +584,6 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
             </>
           ) : (
             <p className="muted small">No expense data this year.</p>
-          )}
-        </div>
-        <div className="card chart-card" data-chart-title="Trend (line)">
-          <h3>Trend (line)</h3>
-          <Line data={lineData} options={optionsLine} />
-          <ChartTotal amount={totalInvestmentYear + totalExpenseYear} label="Year total" />
-          {monthly.length > 0 && (
-            <div className="chart-list-wrapper">
-              <p className="chart-list-title">Month breakdown · total and inv/exp split</p>
-              <ul className="chart-list">
-                {monthly.map((m) => {
-                  const label = new Date(2000, m.month - 1, 1).toLocaleString('default', {
-                    month: 'short',
-                  });
-                  const inv = m.totalInvestment || 0;
-                  const exp = m.totalExpense || 0;
-                  const monthTotal = inv + exp;
-                  const yearPct = totalYearAllMonths
-                    ? Math.round((monthTotal / totalYearAllMonths) * 100)
-                    : 0;
-                  const invPct = monthTotal ? Math.round((inv / monthTotal) * 100) : 0;
-                  const expPct = monthTotal ? 100 - invPct : 0;
-                  return (
-                    <li key={m.month} className="chart-list-row chart-month-row">
-                      <div className="chart-month-main">
-                        <span className="chart-list-label">{label}</span>
-                        <span className="chart-list-value">
-                          {formatAmount(monthTotal)}
-                          {yearPct ? ` (${yearPct}% of year)` : ''}
-                        </span>
-                      </div>
-                      {monthTotal > 0 && (
-                        <div className="chart-month-sub">
-                          <span className="chart-month-pill chart-month-pill-inv">
-                            Inv {formatAmount(inv)} ({invPct}%)
-                          </span>
-                          <span className="chart-month-pill chart-month-pill-exp">
-                            Exp {formatAmount(exp)} ({expPct}%)
-                          </span>
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
           )}
         </div>
         <div className="card chart-card" data-chart-title="Investment by category (year)">
@@ -658,8 +676,7 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           breakdown={investmentTitleTagBreakdown}
           emptyText="Use title like “gold - sip” to see destination breakdown."
         />
-        <div className="card chart-card chart-card-wide" data-chart-title="Top categories (year)">
-          <h3>Top categories (year)</h3>
+        <CollapsibleChartCard title="Top categories (year)" chartTitle="Top categories (year)" wide>
           {categoryBarLabels.length > 0 ? (
             <>
               <Bar data={categoryBarData} options={optionsHorizontalBar} />
@@ -668,9 +685,8 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           ) : (
             <p className="muted small">No category data this year.</p>
           )}
-        </div>
-        <div className="card chart-card chart-card-wide" data-chart-title="Investment categories (bar, year)">
-          <h3>Investment categories (bar, year)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Investment categories (bar, year)" chartTitle="Investment categories (bar, year)" wide>
           {investmentCategoryBarLabels.length > 0 ? (
             <>
               <Bar data={investmentCategoryBarData} options={optionsHorizontalBar} />
@@ -679,9 +695,8 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           ) : (
             <p className="muted small">No investment category data this year.</p>
           )}
-        </div>
-        <div className="card chart-card chart-card-wide" data-chart-title="Expense categories (bar, year)">
-          <h3>Expense categories (bar, year)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Expense categories (bar, year)" chartTitle="Expense categories (bar, year)" wide>
           {expenseCategoryBarLabels.length > 0 ? (
             <>
               <Bar data={expenseCategoryBarData} options={optionsHorizontalBar} />
@@ -690,9 +705,8 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           ) : (
             <p className="muted small">No expense category data this year.</p>
           )}
-        </div>
-        <div className="card chart-card chart-card-wide" data-chart-title="Investment by tag (bar, year)">
-          <h3>Investment by tag (bar, year)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Investment by tag (bar, year)" chartTitle="Investment by tag (bar, year)" wide>
           {investmentTagBarLabels.length > 0 ? (
             <>
               <Bar data={investmentTagBarData} options={makeTagBarHorizontalOptions(maxInvestmentTag)} />
@@ -701,9 +715,8 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           ) : (
             <p className="muted small">No investment tag data this year.</p>
           )}
-        </div>
-        <div className="card chart-card chart-card-wide" data-chart-title="Expense by tag (bar, year)">
-          <h3>Expense by tag (bar, year)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Expense by tag (bar, year)" chartTitle="Expense by tag (bar, year)" wide>
           {expenseTagBarLabels.length > 0 ? (
             <>
               <Bar data={expenseTagBarData} options={makeTagBarHorizontalOptions(maxExpenseTag)} />
@@ -712,10 +725,11 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           ) : (
             <p className="muted small">No expense tag data this year.</p>
           )}
-        </div>
+        </CollapsibleChartCard>
       </div>
     </div>
   );
 }
 
 export default YearlyCharts;
+export { YearlyTrendChart };

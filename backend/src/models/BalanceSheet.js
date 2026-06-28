@@ -4,6 +4,7 @@ const lineItemSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     value: { type: Number, required: true, min: 0 },
+    tag: { type: String, trim: true, default: '' },
   },
   { _id: false }
 );

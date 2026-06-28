@@ -4,12 +4,14 @@ import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/api';
 import TransactionForm from '../components/TransactionForm';
 import MonthlyCharts from '../components/MonthlyCharts';
-import YearlySummary from '../components/YearlySummary';
-import YearlyCharts from '../components/YearlyCharts';
+import YearlyCharts, { YearlyTrendChart } from '../components/YearlyCharts';
 import ManageCategoriesModal from '../components/ManageCategoriesModal';
 import BalanceSheetSection from '../components/BalanceSheetSection';
 import BalanceSheetYearSection from '../components/BalanceSheetYearSection';
 import { exportMonthlyPdf, exportYearlyPdf } from '../utils/exportPdf';
+import CashInflowSection from '../components/CashInflowSection';
+import { MonthlyCashInflowCharts, YearlyCashInflowCharts } from '../components/CashInflowCharts';
+import { MonthRemarkSection, YearRemarksSection } from '../components/RemarkSection';
 
 function parseDescriptionBreakdown(description) {
   if (!description || typeof description !== 'string') return null;
@@ -51,20 +53,13 @@ function DashboardPage() {
   const [listFilter, setListFilter] = useState('all'); // 'all' | 'expense' | 'investment'
   const [searchQuery, setSearchQuery] = useState('');
   const [balanceSheetRefreshKey, setBalanceSheetRefreshKey] = useState(0);
+  const [entriesExpanded, setEntriesExpanded] = useState(true);
+  const [tagsRefreshKey, setTagsRefreshKey] = useState(0);
+  const [cashflowRefreshKey, setCashflowRefreshKey] = useState(0);
 
-  const [manualCashflow, setManualCashflow] = useState('');
+  const [monthInflowTotal, setMonthInflowTotal] = useState(0);
+  const [monthInflows, setMonthInflows] = useState([]);
   const [yearlyCashflowArray, setYearlyCashflowArray] = useState(() => Array(12).fill(0));
-
-  const loadCashflowForMonth = async (y, m) => {
-    try {
-      const res = await api.get('/cashflow', { params: { year: y, month: m } });
-      const amount = res.data?.amount ?? 0;
-      setManualCashflow(amount ? String(amount) : '');
-    } catch (err) {
-      console.error('Failed to load cashflow for month', err);
-      setManualCashflow('');
-    }
-  };
 
   const loadYearlyCashflowArray = async (y) => {
     try {
@@ -79,22 +74,17 @@ function DashboardPage() {
   };
 
   useEffect(() => {
-    loadCashflowForMonth(year, month);
     loadYearlyCashflowArray(year);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month, year]);
 
-  const handleCashflowChange = async (e) => {
-    const v = e.target.value;
-    setManualCashflow(v);
-    const num = v === '' ? 0 : Number(v) || 0;
-    try {
-      await api.put('/cashflow', { year, month, amount: num });
-      // refresh monthly and yearly cache
-      await loadYearlyCashflowArray(year);
-    } catch (err) {
-      console.error('Failed to save cashflow', err);
-    }
+  const handleInflowSaved = () => {
+    loadYearlyCashflowArray(year);
+    setCashflowRefreshKey((k) => k + 1);
+  };
+
+  const handleInflowTotalChange = (total) => {
+    setMonthInflowTotal(total);
   };
 
   const getCashflowNum = (y, m) => {
@@ -225,6 +215,7 @@ function DashboardPage() {
         api,
         chartImages,
         cashflow: getCashflowNum(year, month),
+        inflows: monthInflows,
       });
     } catch (err) {
       console.error('Export PDF failed', err);
@@ -236,7 +227,10 @@ function DashboardPage() {
   const handleExportYearlyPdf = async () => {
     setExportingPdf(true);
     try {
-      const chartImages = captureChartImages('.yearly-charts');
+      const chartImages = [
+        ...captureChartImages('.yearly-trend-top'),
+        ...captureChartImages('.yearly-charts'),
+      ];
       await exportYearlyPdf({ year, yearlySummary, api, chartImages, yearlyCashflow: yearlyCashflowArray });
     } catch (err) {
       console.error('Export PDF failed', err);
@@ -269,9 +263,8 @@ function DashboardPage() {
   const expenseAmount = monthlySummary?.totalExpense || 0;
   const investmentAmount = monthlySummary?.totalInvestment || 0;
   const totalForMonth = expenseAmount + investmentAmount; // Expense + Investment (calculated)
-  const cashflowAmount = manualCashflow === '' ? 0 : (Number(manualCashflow) || 0);
-  // Remaining in bank = cashflow − total. If cashflow not entered, show 0
-  const remainingBalance = manualCashflow === '' ? 0 : (cashflowAmount - totalForMonth);
+  const cashflowAmount = monthInflowTotal;
+  const remainingBalance = cashflowAmount - totalForMonth;
 
   const filteredTransactions = (() => {
     let list = transactions;
@@ -398,7 +391,10 @@ function DashboardPage() {
       <ManageCategoriesModal
         isOpen={categoriesModalOpen}
         onClose={() => setCategoriesModalOpen(false)}
-        onSaved={() => loadData(month, year)}
+        onSaved={() => {
+          loadData(month, year);
+          setTagsRefreshKey((k) => k + 1);
+        }}
       />
 
       <main className="content">
@@ -470,22 +466,14 @@ function DashboardPage() {
                 </label>
               </div>
               <div className="monthly-cashflow">
-                <p className="muted small" style={{ marginBottom: '0.5rem' }}>
-                  Month cashflow — you set cashflow; expense &amp; investment from entries; remaining = cashflow − total
-                </p>
-                <div className="monthly-kpis monthly-cashflow-grid">
-                  <div className="kpi kpi-cashflow-input">
-                    <span className="kpi-label">Cashflow (in bank)</span>
-                    <input
-                      type="number"
-                      className="cashflow-input"
-                      placeholder="Enter amount"
-                      min="0"
-                      step="1"
-                      value={manualCashflow}
-                      onChange={handleCashflowChange}
-                    />
-                  </div>
+                <CashInflowSection
+                  year={year}
+                  month={month}
+                  onTotalChange={handleInflowTotalChange}
+                  onSaved={handleInflowSaved}
+                  onInflowsChange={setMonthInflows}
+                />
+                <div className="monthly-kpis monthly-cashflow-grid monthly-cashflow-summary">
                   <div className="kpi">
                     <span className="kpi-label">Expense</span>
                     <span className="kpi-value">₹{expenseAmount.toLocaleString()}</span>
@@ -495,7 +483,7 @@ function DashboardPage() {
                     <span className="kpi-value">₹{investmentAmount.toLocaleString()}</span>
                   </div>
                   <div className="kpi">
-                    <span className="kpi-label">Total</span>
+                    <span className="kpi-label">Total outflow</span>
                     <span className="kpi-value">₹{totalForMonth.toLocaleString()}</span>
                   </div>
                   <div className="kpi">
@@ -506,10 +494,12 @@ function DashboardPage() {
                   </div>
                 </div>
               </div>
+              <MonthRemarkSection key={`${year}-${month}`} year={year} month={month} />
             </>
           )}
 
           {viewMode === 'yearly' && (
+            <>
             <div className="filter-group">
               <label>
                 <span>Year (for year view)</span>
@@ -522,6 +512,8 @@ function DashboardPage() {
                 </select>
               </label>
             </div>
+            <YearRemarksSection key={year} year={year} />
+            </>
           )}
         </section>
 
@@ -529,11 +521,26 @@ function DashboardPage() {
           <section className="dashboard-sections">
             <div className="content-block">
               <TransactionForm onCreated={handleCreateTransaction} staticCategories={staticCategories} />
-              <div className="card transactions-list">
+              <div className={`card transactions-list${entriesExpanded ? ' entries-expanded' : ''}`}>
                 <div className="list-header">
-                  <h2>Entries this month</h2>
+                  <button
+                    type="button"
+                    className="list-header-toggle"
+                    onClick={() => setEntriesExpanded((v) => !v)}
+                    aria-expanded={entriesExpanded}
+                  >
+                    <span className="list-header-chevron" aria-hidden="true">
+                      {entriesExpanded ? '▾' : '▸'}
+                    </span>
+                    <h2>Entries this month</h2>
+                    {!entriesExpanded && transactions.length > 0 && (
+                      <span className="pill list-header-count">{transactions.length}</span>
+                    )}
+                  </button>
                   {loading && <span className="pill">Loading…</span>}
                 </div>
+                {entriesExpanded && (
+                  <>
                 <div className="list-filters">
                   <div className="list-filter-buttons">
                     <button
@@ -757,15 +764,19 @@ function DashboardPage() {
                     </li>
                   ))}
                 </ul>
+                  </>
+                )}
               </div>
             </div>
             <div className="balance-sheet-month-wrap">
               <BalanceSheetSection
                 year={year}
                 month={month}
+                tagsRefreshKey={tagsRefreshKey}
                 onSaved={() => setBalanceSheetRefreshKey((k) => k + 1)}
               />
             </div>
+            <MonthlyCashInflowCharts inflows={monthInflows} year={year} month={month} />
             <div className="charts-at-bottom">
               <MonthlyCharts
                 monthSummary={monthlySummary}
@@ -804,7 +815,7 @@ function DashboardPage() {
                       <>
                         <div className="year-cashflow-kpis">
                           <div className="kpi">
-                            <span className="kpi-label">Year cashflow from salary/income (sum of months)</span>
+                            <span className="kpi-label">Total cash inflow (sum of months)</span>
                             <span className="kpi-value">
                               ₹{yearlyCashflow.toLocaleString('en-IN')}
                             </span>
@@ -888,10 +899,11 @@ function DashboardPage() {
                   })()}
                 </div>
               )}
-              <YearlySummary yearly={yearlySummary} />
+              <YearlyTrendChart yearly={yearlySummary} />
               <BalanceSheetYearSection year={year} refreshKey={balanceSheetRefreshKey} />
             </div>
             <div className="charts-at-bottom">
+              <YearlyCashInflowCharts year={year} refreshKey={cashflowRefreshKey} />
               <YearlyCharts yearly={yearlySummary} yearlyCashflow={yearlyCashflowArray} />
             </div>
           </section>

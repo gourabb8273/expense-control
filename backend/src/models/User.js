@@ -18,6 +18,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    defaultMonthlySalary: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
   },
   { timestamps: true }
 );

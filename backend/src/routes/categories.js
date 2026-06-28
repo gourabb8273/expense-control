@@ -11,7 +11,9 @@ router.get('/', async (req, res) => {
   try {
     const { type } = req.query;
     const filter = { userId: req.user.id };
-    if (type === 'investment' || type === 'expense') filter.type = type;
+    if (type === 'investment' || type === 'expense' || type === 'asset' || type === 'debt') {
+      filter.type = type;
+    }
 
     const list = await StaticCategory.find(filter).sort({ type: 1, order: 1, name: 1 });
     return res.json({ categories: list });
@@ -27,8 +29,10 @@ router.post('/', async (req, res) => {
     if (!type || !name || !name.trim()) {
       return res.status(400).json({ message: 'type and name are required' });
     }
-    if (type !== 'investment' && type !== 'expense') {
-      return res.status(400).json({ message: 'type must be investment or expense' });
+    if (!['investment', 'expense', 'asset', 'debt'].includes(type)) {
+      return res.status(400).json({
+        message: 'type must be investment, expense, asset, or debt',
+      });
     }
 
     const category = await StaticCategory.create({

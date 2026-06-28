@@ -23,6 +23,7 @@ function cloneLines(lines) {
     .map((i) => ({
       name: String(i.name || '').trim(),
       value: Math.max(0, Number(i.value) || 0),
+      tag: String(i.tag || '').trim(),
     }))
     .filter((i) => i.name);
 }
@@ -164,10 +165,18 @@ router.put('/', async (req, res) => {
       { userId, year, month },
       {
         assets: assetsList
-          .map((a) => ({ name: String(a.name || '').trim(), value: Number(a.value) || 0 }))
+          .map((a) => ({
+            name: String(a.name || '').trim(),
+            value: Number(a.value) || 0,
+            tag: String(a.tag || '').trim(),
+          }))
           .filter((a) => a.name),
         debts: debtsList
-          .map((d) => ({ name: String(d.name || '').trim(), value: Number(d.value) || 0 }))
+          .map((d) => ({
+            name: String(d.name || '').trim(),
+            value: Number(d.value) || 0,
+            tag: String(d.tag || '').trim(),
+          }))
           .filter((d) => d.name),
       },
       { new: true, upsert: true }

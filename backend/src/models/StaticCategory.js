@@ -10,7 +10,7 @@ const staticCategorySchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['investment', 'expense'],
+      enum: ['investment', 'expense', 'asset', 'debt'],
       required: true,
       index: true,
     },

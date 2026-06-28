@@ -10,6 +10,7 @@ import {
   Legend,
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
+import CollapsibleChartCard from './CollapsibleChartCard';
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend, ChartDataLabels);
 
 function formatAmount(n) {
@@ -511,7 +512,7 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
   });
 
   const comparisonBarData = {
-    labels: ['Cashflow (entered)', 'Investment', 'Expense'],
+    labels: ['Cash inflow', 'Investment', 'Expense'],
     datasets: [
       {
         label: 'Last month',
@@ -546,14 +547,14 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
     <div className="charts-section monthly-charts">
       <div className="charts-grid">
         {hasComparison && (
-          <div
-            className="card chart-card chart-card-wide"
-            data-chart-title="This month vs last & avg"
+          <CollapsibleChartCard
+            title="This month vs last & avg"
+            chartTitle="This month vs last & avg"
+            wide
           >
-            <h3>This month vs last & avg</h3>
             <Bar data={comparisonBarData} options={comparisonBarOptions} />
             <ChartTotal amount={currentInvestment + currentExpense} label="This month total" />
-          </div>
+          </CollapsibleChartCard>
         )}
         <div className="card chart-card" data-chart-title="Investment vs Expense">
           <h3>Investment vs Expense</h3>
@@ -567,8 +568,7 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
             <p className="muted small">Add entries to see the ratio.</p>
           )}
         </div>
-        <div className="card chart-card" data-chart-title="Totals (bar)">
-          <h3>Totals (bar)</h3>
+        <CollapsibleChartCard title="Totals (bar)" chartTitle="Totals (bar)">
           {hasData ? (
             <>
               <Bar data={totalsBarData} options={optionsVerticalBar} />
@@ -577,7 +577,7 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           ) : (
             <p className="muted small">No data this month.</p>
           )}
-        </div>
+        </CollapsibleChartCard>
         <div className="card chart-card" data-chart-title="Investment by category">
           <h3>Investment by category</h3>
           {investmentCategories.length > 0 ? (
@@ -687,8 +687,7 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           transactions={transactions}
           emptyText="Use title like “gold - sip” to see destination breakdown."
         />
-        <div className="card chart-card chart-card-wide" data-chart-title="Top categories (all)">
-          <h3>Top categories (all)</h3>
+        <CollapsibleChartCard title="Top categories (all)" chartTitle="Top categories (all)" wide>
           {categoryBarLabels.length > 0 ? (
             <>
               <Bar data={categoryBarData} options={optionsBar} />
@@ -697,9 +696,8 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           ) : (
             <p className="muted small">No category data this month.</p>
           )}
-        </div>
-        <div className="card chart-card chart-card-wide" data-chart-title="Investment categories (bar)">
-          <h3>Investment categories (bar)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Investment categories (bar)" chartTitle="Investment categories (bar)" wide>
           {investmentCategoryBarLabels.length > 0 ? (
             <>
               <Bar data={investmentCategoryBarData} options={optionsBar} />
@@ -708,9 +706,8 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           ) : (
             <p className="muted small">No investment category data this month.</p>
           )}
-        </div>
-        <div className="card chart-card chart-card-wide" data-chart-title="Expense categories (bar)">
-          <h3>Expense categories (bar)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Expense categories (bar)" chartTitle="Expense categories (bar)" wide>
           {expenseCategoryBarLabels.length > 0 ? (
             <>
               <Bar data={expenseCategoryBarData} options={optionsBar} />
@@ -719,9 +716,8 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           ) : (
             <p className="muted small">No expense category data this month.</p>
           )}
-        </div>
-        <div className="card chart-card chart-card-wide" data-chart-title="Investment by tag (bar)">
-          <h3>Investment by tag (bar)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Investment by tag (bar)" chartTitle="Investment by tag (bar)" wide>
           {investmentTagBarLabels.length > 0 ? (
             <>
               <Bar data={investmentTagBarData} options={makeTagBarOptions(maxInvestmentTag)} />
@@ -730,9 +726,8 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           ) : (
             <p className="muted small">No investment tag data this month.</p>
           )}
-        </div>
-        <div className="card chart-card chart-card-wide" data-chart-title="Expense by tag (bar)">
-          <h3>Expense by tag (bar)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Expense by tag (bar)" chartTitle="Expense by tag (bar)" wide>
           {expenseTagBarLabels.length > 0 ? (
             <>
               <Bar data={expenseTagBarData} options={makeTagBarOptions(maxExpenseTag)} />
@@ -741,7 +736,7 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           ) : (
             <p className="muted small">No expense tag data this month.</p>
           )}
-        </div>
+        </CollapsibleChartCard>
       </div>
     </div>
   );

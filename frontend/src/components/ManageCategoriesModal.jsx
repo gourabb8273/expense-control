@@ -1,10 +1,30 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 
+const TAB_CONFIG = [
+  { id: 'investment', label: 'Investment tags' },
+  { id: 'expense', label: 'Expense tags' },
+  { id: 'asset', label: 'Asset tags' },
+  { id: 'debt', label: 'Debt tags' },
+];
+
+const PLACEHOLDERS = {
+  investment: 'e.g. RD, FD, ETF',
+  expense: 'e.g. Loan, Rent, Groceries',
+  asset: 'e.g. Gold, Stock, Mutual Fund',
+  debt: 'e.g. Home loan, Credit card',
+};
+
+const HINTS = {
+  investment: 'Use when adding investment entries; shows in investment tag charts.',
+  expense: 'Use when adding expense entries; shows in expense tag charts.',
+  asset: 'Use on balance sheet asset lines',
+  debt: 'Use on balance sheet debt lines to group liabilities by tag.',
+};
+
 function ManageCategoriesModal({ isOpen, onClose, onSaved }) {
   const [tab, setTab] = useState('investment');
-  const [investmentList, setInvestmentList] = useState([]);
-  const [expenseList, setExpenseList] = useState([]);
+  const [lists, setLists] = useState({ investment: [], expense: [], asset: [], debt: [] });
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
@@ -15,8 +35,12 @@ function ManageCategoriesModal({ isOpen, onClose, onSaved }) {
     try {
       const res = await api.get('/categories');
       const list = res.data.categories || [];
-      setInvestmentList(list.filter((c) => c.type === 'investment'));
-      setExpenseList(list.filter((c) => c.type === 'expense'));
+      setLists({
+        investment: list.filter((c) => c.type === 'investment'),
+        expense: list.filter((c) => c.type === 'expense'),
+        asset: list.filter((c) => c.type === 'asset'),
+        debt: list.filter((c) => c.type === 'debt'),
+      });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load categories');
     }
@@ -31,7 +55,7 @@ function ManageCategoriesModal({ isOpen, onClose, onSaved }) {
     }
   }, [isOpen]);
 
-  const list = tab === 'investment' ? investmentList : expenseList;
+  const list = lists[tab] || [];
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -91,31 +115,25 @@ function ManageCategoriesModal({ isOpen, onClose, onSaved }) {
             ×
           </button>
         </div>
-        <div className="modal-tabs">
-          <button
-            type="button"
-            className={tab === 'investment' ? 'primary-btn' : 'ghost-btn'}
-            onClick={() => setTab('investment')}
-          >
-            Investment tags
-          </button>
-          <button
-            type="button"
-            className={tab === 'expense' ? 'primary-btn' : 'ghost-btn'}
-            onClick={() => setTab('expense')}
-          >
-            Expense tags
-          </button>
+        <div className="modal-tabs modal-tabs-scroll">
+          {TAB_CONFIG.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              className={tab === id ? 'primary-btn small' : 'ghost-btn small'}
+              onClick={() => setTab(id)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-        <p className="muted small">
-          Add tags (e.g. RD, FD, ETF for investment; Loan, Rent for expense). Use the <strong>Tag</strong> field when adding or editing entries; tagged entries appear in “Investment by tag” and “Expense by tag” pie charts.
-        </p>
+        <p className="muted small">{HINTS[tab]}</p>
         <form onSubmit={handleAdd} className="modal-add-form">
           <input
             type="text"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder={tab === 'investment' ? 'e.g. RD, FD, ETF' : 'e.g. Loan, Rent, Groceries'}
+            placeholder={PLACEHOLDERS[tab]}
             aria-label="New tag name"
           />
           <button type="submit" className="primary-btn" disabled={loading}>

@@ -10,6 +10,7 @@ const reportRoutes = require('./routes/reports');
 const cashflowRoutes = require('./routes/cashflow');
 const categoryRoutes = require('./routes/categories');
 const balanceSheetRoutes = require('./routes/balanceSheet');
+const remarkRoutes = require('./routes/remarks');
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/balance-sheet', balanceSheetRoutes);
 app.use('/api/cashflow', cashflowRoutes);
+app.use('/api/remarks', remarkRoutes);
 
 mongoose
   .connect(MONGODB_URI, {
