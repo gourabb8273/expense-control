@@ -15,6 +15,7 @@ import {
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { aggregateByTag } from '../utils/aggregateByTag';
 import CollapsibleChartCard from './CollapsibleChartCard';
+import { lineChartMinWidth } from './LineChartFrame';
 
 ChartJS.register(
   CategoryScale,
@@ -30,6 +31,23 @@ ChartJS.register(
 
 const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const PIE_COLORS = ['#22c55e', '#3b82f6', '#f97316', '#a855f7', '#ec4899', '#eab308', '#0ea5e9', '#14b8a6', '#64748b'];
+
+function useIsMobile(maxWidth = 640) {
+  const query = `(max-width: ${maxWidth}px)`;
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(query).matches : false
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const onChange = () => setIsMobile(mq.matches);
+    mq.addEventListener('change', onChange);
+    setIsMobile(mq.matches);
+    return () => mq.removeEventListener('change', onChange);
+  }, [query]);
+
+  return isMobile;
+}
 
 /** Rupee ticks short on axis; full amounts in tooltip. */
 function compactInrAxis(value) {
@@ -290,6 +308,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!year) return;
@@ -638,9 +657,17 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
     () => ({
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 18, bottom: 18 } },
+      interaction: { mode: 'index', intersect: false },
+      layout: {
+        padding: {
+          top: isMobile ? 8 : 18,
+          bottom: isMobile ? 8 : 18,
+          left: isMobile ? 2 : 4,
+          right: isMobile ? 8 : 12,
+        },
+      },
       plugins: {
-        datalabels: datalabelsLine,
+        datalabels: isMobile ? { display: false } : datalabelsLine,
         legend: { position: 'bottom' },
         tooltip: {
           callbacks: {
@@ -668,20 +695,22 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
             maxRotation: 0,
             autoSkip: false,
             maxTicksLimit: 24,
+            font: { size: isMobile ? 10 : 11 },
           },
           grid: { display: false },
         },
         y: {
           ticks: {
             color: '#9ca3af',
-            maxTicksLimit: 6,
+            maxTicksLimit: isMobile ? 5 : 6,
+            font: { size: isMobile ? 10 : 11 },
             callback: (value) => compactInrAxis(value),
           },
           grid: { color: 'rgba(148, 163, 184, 0.15)' },
         },
       },
     }),
-    [lineMonthStatuses, datalabelsLine]
+    [lineMonthStatuses, datalabelsLine, isMobile]
   );
 
   if (loading || !data) {
@@ -787,8 +816,13 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
             <span className="legend-dot legend-dot-carried" /> Carried / no change (gray)
             <span className="legend-dot legend-dot-empty" /> No data
           </p>
-          <div className="balance-sheet-chart balance-sheet-line-chart">
-            <Line data={lineData} options={lineOptions} />
+          <div className="chart-line-scroll is-full-width">
+            <div
+              className="balance-sheet-chart balance-sheet-line-chart chart-line-scroll-inner"
+              style={{ minWidth: lineChartMinWidth(lineChartMonthNums.length) }}
+            >
+              <Line data={lineData} options={lineOptions} />
+            </div>
           </div>
           {tagChartData && (tagChartData.hasAssetTags || tagChartData.hasDebtTags) && (
             <>

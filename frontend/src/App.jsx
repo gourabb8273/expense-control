@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 
@@ -16,21 +17,23 @@ function PrivateRoute({ children }) {
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <PrivateRoute>
-                <DashboardPage />
-              </PrivateRoute>
-            }
-          />
-          <Route path="/login" element={<LoginPage />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <BrowserRouter>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <PrivateRoute>
+                  <DashboardPage />
+                </PrivateRoute>
+              }
+            />
+            <Route path="/login" element={<LoginPage />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

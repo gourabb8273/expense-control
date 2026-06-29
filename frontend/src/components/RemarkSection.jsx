@@ -3,6 +3,13 @@ import { api } from '../services/api';
 
 const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+function previewText(text, max = 72) {
+  const trimmed = (text || '').trim();
+  if (!trimmed) return '';
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max).trim()}…`;
+}
+
 function MonthRemarkSection({ year, month }) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -74,6 +81,9 @@ function MonthRemarkSection({ year, month }) {
     if (userEditedRef.current && !skipSaveRef.current) persist(text);
   };
 
+  const trimmed = text.trim();
+  const collapsedPreview = previewText(trimmed);
+
   return (
     <div className="card remark-section">
       <div className="remark-header">
@@ -87,8 +97,10 @@ function MonthRemarkSection({ year, month }) {
             {expanded ? '▾' : '▸'}
           </span>
           <h2>Remark · {monthLabel} {year}</h2>
-          {!expanded && text.trim() && (
-            <span className="pill section-header-summary">Note saved</span>
+          {!expanded && collapsedPreview && (
+            <span className="remark-collapsed-preview" title={trimmed}>
+              {collapsedPreview}
+            </span>
           )}
         </button>
       </div>
@@ -120,11 +132,13 @@ function YearRemarksSection({ year }) {
   const [monthTexts, setMonthTexts] = useState(() => Array(12).fill(''));
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [monthNotesExpanded, setMonthNotesExpanded] = useState(false);
   const skipSaveRef = useRef(false);
   const saveTimerRef = useRef(null);
 
   useEffect(() => {
     setExpanded(false);
+    setMonthNotesExpanded(false);
   }, [year]);
 
   const load = useCallback(async () => {
@@ -153,42 +167,34 @@ function YearRemarksSection({ year }) {
     };
   }, [load]);
 
-  const persist = async (month, text) => {
+  const persistYear = async (text) => {
     try {
-      await api.put('/remarks', { year, month, text });
+      await api.put('/remarks', { year, month: 0, text });
     } catch (err) {
       console.error('Failed to save remark', err);
     }
   };
 
-  const scheduleSave = (month, text) => {
+  const scheduleYearSave = (text) => {
     if (skipSaveRef.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => persist(month, text), 500);
+    saveTimerRef.current = setTimeout(() => persistYear(text), 500);
   };
 
   const handleYearChange = (e) => {
     const value = e.target.value;
     setYearText(value);
-    scheduleSave(0, value);
-  };
-
-  const handleMonthChange = (idx, value) => {
-    setMonthTexts((prev) => {
-      const next = [...prev];
-      next[idx] = value;
-      return next;
-    });
-    scheduleSave(idx + 1, value);
+    scheduleYearSave(value);
   };
 
   const now = new Date();
   const endMonth = year > now.getFullYear() ? 0 : year < now.getFullYear() ? 12 : now.getMonth() + 1;
   const monthsWithNotes = monthTexts
-    .map((t, idx) => ({ month: idx + 1, text: t }))
-    .filter((row) => row.month <= endMonth && row.text.trim());
+    .map((t, idx) => ({ month: idx + 1, text: (t || '').trim() }))
+    .filter((row) => row.month <= endMonth && row.text);
 
-  const hasAny = yearText.trim() || monthsWithNotes.length > 0;
+  const hasYearNote = Boolean(yearText.trim());
+  const hasAny = hasYearNote || monthsWithNotes.length > 0;
 
   return (
     <div className="card remark-section">
@@ -205,7 +211,7 @@ function YearRemarksSection({ year }) {
           <h2>Remarks · {year}</h2>
           {!expanded && hasAny && (
             <span className="pill section-header-summary">
-              {monthsWithNotes.length + (yearText.trim() ? 1 : 0)} note(s)
+              {monthsWithNotes.length + (hasYearNote ? 1 : 0)} note(s)
             </span>
           )}
         </button>
@@ -213,7 +219,7 @@ function YearRemarksSection({ year }) {
       {expanded && (
         <>
           <p className="muted small remark-hint">
-            Optional year summary plus per-month notes. Edits save automatically.
+            Year summary saves here. Add or edit month notes in each month&apos;s view.
           </p>
           {loading ? (
             <p className="muted small">Loading…</p>
@@ -227,28 +233,38 @@ function YearRemarksSection({ year }) {
                   placeholder={`Overall note for ${year}…`}
                   value={yearText}
                   onChange={handleYearChange}
-                  onBlur={() => persist(0, yearText)}
+                  onBlur={() => persistYear(yearText)}
                 />
               </label>
-              {endMonth > 0 && (
-                <div className="remark-month-list">
-                  <h3 className="remark-month-list-title">Month remarks</h3>
-                  {Array.from({ length: endMonth }).map((_, idx) => {
-                    const m = idx + 1;
-                    return (
-                      <label key={m} className="remark-month-row">
-                        <span className="remark-month-name">{MONTH_NAMES[m]}</span>
-                        <textarea
-                          className="remark-textarea remark-textarea-inline"
-                          rows={2}
-                          placeholder={`Optional note for ${MONTH_NAMES[m]}…`}
-                          value={monthTexts[idx] || ''}
-                          onChange={(e) => handleMonthChange(idx, e.target.value)}
-                          onBlur={(e) => persist(m, e.target.value)}
-                        />
-                      </label>
-                    );
-                  })}
+
+              {monthsWithNotes.length > 0 && (
+                <div className="remark-month-notes-block">
+                  <button
+                    type="button"
+                    className="section-header-toggle remark-sub-toggle"
+                    onClick={() => setMonthNotesExpanded((v) => !v)}
+                    aria-expanded={monthNotesExpanded}
+                  >
+                    <span className="section-header-chevron" aria-hidden="true">
+                      {monthNotesExpanded ? '▾' : '▸'}
+                    </span>
+                    <span className="remark-sub-toggle-label">
+                      Month notes
+                    </span>
+                    <span className="pill section-header-summary">
+                      {monthsWithNotes.length}
+                    </span>
+                  </button>
+                  {monthNotesExpanded && (
+                    <ul className="remark-month-notes">
+                      {monthsWithNotes.map(({ month, text }) => (
+                        <li key={month} className="remark-month-note">
+                          <span className="remark-month-badge">{MONTH_NAMES[month]}</span>
+                          <p className="remark-month-message">{text}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
             </>

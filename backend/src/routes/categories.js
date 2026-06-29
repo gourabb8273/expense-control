@@ -1,11 +1,43 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const StaticCategory = require('../models/StaticCategory');
+const BalanceSheet = require('../models/BalanceSheet');
+const Transaction = require('../models/Transaction');
+const RecurringRule = require('../models/RecurringRule');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
 
 router.use(auth);
+
+async function cascadeTagRename(userId, type, oldName, newName) {
+  if (!oldName || !newName || oldName === newName) return;
+
+  const uid = new mongoose.Types.ObjectId(userId);
+
+  if (type === 'asset') {
+    await BalanceSheet.updateMany(
+      { userId: uid, 'assets.tag': oldName },
+      { $set: { 'assets.$[elem].tag': newName } },
+      { arrayFilters: [{ 'elem.tag': oldName }] }
+    );
+  } else if (type === 'debt') {
+    await BalanceSheet.updateMany(
+      { userId: uid, 'debts.tag': oldName },
+      { $set: { 'debts.$[elem].tag': newName } },
+      { arrayFilters: [{ 'elem.tag': oldName }] }
+    );
+  } else if (type === 'investment' || type === 'expense') {
+    await Transaction.updateMany(
+      { userId: uid, type, tag: oldName },
+      { $set: { tag: newName } }
+    );
+    await RecurringRule.updateMany(
+      { userId: uid, type, tag: oldName },
+      { $set: { tag: newName } }
+    );
+  }
+}
 
 router.get('/', async (req, res) => {
   try {
@@ -55,13 +87,21 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ message: 'name is required' });
     }
 
+    const existing = await StaticCategory.findOne({ _id: id, userId: req.user.id });
+    if (!existing) return res.status(404).json({ message: 'Category not found' });
+
+    const oldName = existing.name;
+    const trimmed = name.trim();
+
     const category = await StaticCategory.findOneAndUpdate(
       { _id: id, userId: req.user.id },
-      { name: name.trim() },
+      { name: trimmed },
       { new: true }
     );
-    if (!category) return res.status(404).json({ message: 'Category not found' });
-    return res.json({ category });
+
+    await cascadeTagRename(req.user.id, existing.type, oldName, trimmed);
+
+    return res.json({ category, renamedFrom: oldName !== trimmed ? oldName : undefined });
   } catch (err) {
     console.error('Update category error', err);
     return res.status(500).json({ message: 'Internal server error' });

@@ -1,12 +1,17 @@
 const mongoose = require('mongoose');
 
-const transactionSchema = new mongoose.Schema(
+const recurringRuleSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
       index: true,
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
     },
     type: {
       type: String,
@@ -31,29 +36,30 @@ const transactionSchema = new mongoose.Schema(
     description: {
       type: String,
       trim: true,
+      default: '',
     },
-    date: {
-      type: Date,
-      required: true,
-      index: true,
-    },
-    /** Only used when type is expense: optional essential vs non-essential classification. */
     expenseEssential: {
       type: String,
       enum: ['essential', 'nonessential'],
       required: false,
     },
-    recurringRuleId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'RecurringRule',
-      index: true,
-      default: null,
+    /** Day of month for generated entry (1–28). */
+    dayOfMonth: {
+      type: Number,
+      min: 1,
+      max: 28,
+      default: 1,
+    },
+    active: {
+      type: Boolean,
+      default: true,
     },
   },
   { timestamps: true }
 );
 
-const Transaction = mongoose.model('Transaction', transactionSchema);
+recurringRuleSchema.index({ userId: 1, active: 1 });
 
-module.exports = Transaction;
+const RecurringRule = mongoose.model('RecurringRule', recurringRuleSchema);
 
+module.exports = RecurringRule;

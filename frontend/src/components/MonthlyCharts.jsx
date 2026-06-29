@@ -171,88 +171,89 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText, transactions = [],
   };
 
   return (
-    <div className="card chart-card" data-chart-title={title} onClick={handleCardClick}>
-      <div className="chart-header-row">
-        <h3 style={{ marginBottom: 0 }}>{title}</h3>
+    <CollapsibleChartCard title={title} chartTitle={title}>
+      <div onClick={handleCardClick} role="presentation">
         {tags.length > 0 && (
-          <select
-            value={effectiveSelectedTag}
-            onChange={(e) => setSelectedTag(e.target.value)}
-            className="chart-select"
-            title="Select destination"
-          >
-            {tags.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
+          <div className="chart-header-row">
+            <select
+              value={effectiveSelectedTag}
+              onChange={(e) => setSelectedTag(e.target.value)}
+              className="chart-select"
+              title="Select destination"
+            >
+              {tags.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {tags.length > 0 && items.length > 0 ? (
+          <>
+            <Pie data={pieData} options={{ plugins: { datalabels: { display: false } } }} />
+            <div className="chart-list-wrapper">
+              <ul className="chart-list">
+                {items.map((item) => {
+                  const value = Number(item.total) || 0;
+                  const totalAll = items.reduce((sum, x) => sum + (Number(x.total) || 0), 0);
+                  const percent = totalAll ? Math.round((value / totalAll) * 100) : 0;
+                  const isSelected = selectedType === item.type;
+                  return (
+                    <li
+                      key={item.type}
+                      className={`chart-list-row${isSelected ? ' chart-list-row-selected' : ''}`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleRowClick(item.type)}
+                    >
+                      <span className="chart-list-label">
+                        {item.type} {isSelected ? '· details' : ''}
+                      </span>
+                      <span className="chart-list-value">
+                        {formatAmount(value)} {percent ? `(${percent}%)` : ''}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+            <ChartTotal amount={items.reduce((s, x) => s + (x.total || 0), 0)} />
+            {descriptionBreakdown && (
+              <div className="desc-breakdown" style={{ marginTop: '0.4rem' }}>
+                <p className="desc-breakdown-title">
+                  Breakdown for:&nbsp;
+                  <strong>{effectiveSelectedTag || '-'}</strong>
+                  {selectedType ? ` \u2013 ${selectedType}` : ''}
+                  {txType ? ` (${txType})` : ''}
+                </p>
+                <ul className="desc-breakdown-list">
+                  {descriptionBreakdown.rows.map((row) => (
+                    <li key={row.label} className="desc-breakdown-row">
+                      <span className="desc-breakdown-label">{row.label}</span>
+                      <span className="desc-breakdown-value">
+                        {formatAmount(row.value)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="desc-breakdown-summary">
+                  Breakdown from descriptions: {formatAmount(descriptionBreakdown.totalFromDescriptions)}{' '}
+                  {descriptionBreakdown.matches ? (
+                    <span className="desc-breakdown-ok">(matches chart total)</span>
+                  ) : (
+                    <span className="desc-breakdown-mismatch">
+                      (diff vs chart: {formatAmount(descriptionBreakdown.diff)})
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="muted small">{emptyText}</p>
         )}
       </div>
-      {tags.length > 0 && items.length > 0 ? (
-        <>
-          <Pie data={pieData} options={{ plugins: { datalabels: { display: false } } }} />
-          <div className="chart-list-wrapper">
-            <ul className="chart-list">
-              {items.map((item) => {
-                const value = Number(item.total) || 0;
-                const totalAll = items.reduce((sum, x) => sum + (Number(x.total) || 0), 0);
-                const percent = totalAll ? Math.round((value / totalAll) * 100) : 0;
-                const isSelected = selectedType === item.type;
-                return (
-                  <li
-                    key={item.type}
-                    className={`chart-list-row${isSelected ? ' chart-list-row-selected' : ''}`}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => handleRowClick(item.type)}
-                  >
-                    <span className="chart-list-label">
-                      {item.type} {isSelected ? '· details' : ''}
-                    </span>
-                    <span className="chart-list-value">
-                      {formatAmount(value)} {percent ? `(${percent}%)` : ''}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-          <ChartTotal amount={items.reduce((s, x) => s + (x.total || 0), 0)} />
-          {descriptionBreakdown && (
-            <div className="desc-breakdown" style={{ marginTop: '0.4rem' }}>
-              <p className="desc-breakdown-title">
-                Breakdown for:&nbsp;
-                <strong>{effectiveSelectedTag || '-'}</strong>
-                {selectedType ? ` \u2013 ${selectedType}` : ''}
-                {txType ? ` (${txType})` : ''}
-              </p>
-              <ul className="desc-breakdown-list">
-                {descriptionBreakdown.rows.map((row) => (
-                  <li key={row.label} className="desc-breakdown-row">
-                    <span className="desc-breakdown-label">{row.label}</span>
-                    <span className="desc-breakdown-value">
-                      {formatAmount(row.value)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="desc-breakdown-summary">
-                Breakdown from descriptions: {formatAmount(descriptionBreakdown.totalFromDescriptions)}{' '}
-                {descriptionBreakdown.matches ? (
-                  <span className="desc-breakdown-ok">(matches chart total)</span>
-                ) : (
-                  <span className="desc-breakdown-mismatch">
-                    (diff vs chart: {formatAmount(descriptionBreakdown.diff)})
-                  </span>
-                )}
-              </p>
-            </div>
-          )}
-        </>
-      ) : (
-        <p className="muted small">{emptyText}</p>
-      )}
-    </div>
+    </CollapsibleChartCard>
   );
 }
 
@@ -556,8 +557,7 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
             <ChartTotal amount={currentInvestment + currentExpense} label="This month total" />
           </CollapsibleChartCard>
         )}
-        <div className="card chart-card" data-chart-title="Investment vs Expense">
-          <h3>Investment vs Expense</h3>
+        <CollapsibleChartCard title="Investment vs Expense" chartTitle="Investment vs Expense">
           {hasData ? (
             <>
               <Doughnut data={investVsExpenseData} options={optionsPie} />
@@ -567,7 +567,7 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           ) : (
             <p className="muted small">Add entries to see the ratio.</p>
           )}
-        </div>
+        </CollapsibleChartCard>
         <CollapsibleChartCard title="Totals (bar)" chartTitle="Totals (bar)">
           {hasData ? (
             <>
@@ -578,8 +578,7 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
             <p className="muted small">No data this month.</p>
           )}
         </CollapsibleChartCard>
-        <div className="card chart-card" data-chart-title="Investment by category">
-          <h3>Investment by category</h3>
+        <CollapsibleChartCard title="Investment by category" chartTitle="Investment by category">
           {investmentCategories.length > 0 ? (
             <>
               <Pie data={investmentPieData} options={optionsPie} />
@@ -593,9 +592,8 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           ) : (
             <p className="muted small">No investment entries this month.</p>
           )}
-        </div>
-        <div className="card chart-card" data-chart-title="Expense by category">
-          <h3>Expense by category</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Expense by category" chartTitle="Expense by category">
           {expenseCategories.length > 0 ? (
             <>
               <Pie data={expensePieData} options={optionsPie} />
@@ -609,9 +607,8 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           ) : (
             <p className="muted small">No expense entries this month.</p>
           )}
-        </div>
-        <div className="card chart-card" data-chart-title="Expense · essential split">
-          <h3>Expense · essential vs non-essential</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Expense · essential vs non-essential" chartTitle="Expense · essential split">
           {totalExpense > 0 ? (
             <>
               <Pie data={essentialExpensePieData} options={optionsPie} />
@@ -624,9 +621,8 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           ) : (
             <p className="muted small">No expense this month.</p>
           )}
-        </div>
-        <div className="card chart-card" data-chart-title="By category (all)">
-          <h3>By category (all)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="By category (all)" chartTitle="By category (all)">
           {categories.length > 0 ? (
             <>
               <Pie data={allCategoriesPieData} options={optionsPie} />
@@ -640,9 +636,8 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           ) : (
             <p className="muted small">No category data this month.</p>
           )}
-        </div>
-        <div className="card chart-card" data-chart-title="Investment by tag">
-          <h3>Investment by tag</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Investment by tag" chartTitle="Investment by tag">
           {investmentByTag.length > 0 ? (
             <>
               <Pie data={investmentByTagPieData} options={optionsPie} />
@@ -656,9 +651,8 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           ) : (
             <p className="muted small">Tag investment entries for this chart.</p>
           )}
-        </div>
-        <div className="card chart-card" data-chart-title="Expense by tag">
-          <h3>Expense by tag</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Expense by tag" chartTitle="Expense by tag">
           {expenseByTag.length > 0 ? (
             <>
               <Pie data={expenseByTagPieData} options={optionsPie} />
@@ -672,7 +666,7 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
           ) : (
             <p className="muted small">Tag expense entries for this chart.</p>
           )}
-        </div>
+        </CollapsibleChartCard>
         <TitleTagBreakdownCard
           title="Expense by destination (title)"
           breakdown={expenseTitleTagBreakdown}

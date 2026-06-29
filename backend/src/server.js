@@ -11,6 +11,7 @@ const cashflowRoutes = require('./routes/cashflow');
 const categoryRoutes = require('./routes/categories');
 const balanceSheetRoutes = require('./routes/balanceSheet');
 const remarkRoutes = require('./routes/remarks');
+const recurringRoutes = require('./routes/recurring');
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/balance-sheet', balanceSheetRoutes);
 app.use('/api/cashflow', cashflowRoutes);
 app.use('/api/remarks', remarkRoutes);
+app.use('/api/recurring', recurringRoutes);
 
 mongoose
   .connect(MONGODB_URI, {

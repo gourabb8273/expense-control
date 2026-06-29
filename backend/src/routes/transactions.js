@@ -35,12 +35,12 @@ function normalizeExpenseEssential(type, raw) {
 
 router.post('/', async (req, res) => {
   try {
-    const { type, amount, category, description, date, tag, expenseEssential } = req.body;
+    const { type, amount, category, description, date, tag, expenseEssential, recurringRuleId } = req.body;
     if (!type || !amount || !category || !date) {
       return res.status(400).json({ message: 'type, amount, category, and date are required' });
     }
 
-    const tx = await Transaction.create({
+    const payload = {
       userId: req.user.id,
       type,
       amount,
@@ -49,7 +49,12 @@ router.post('/', async (req, res) => {
       description: description || '',
       date: new Date(date),
       expenseEssential: normalizeExpenseEssential(type, expenseEssential),
-    });
+    };
+    if (recurringRuleId) {
+      payload.recurringRuleId = recurringRuleId;
+    }
+
+    const tx = await Transaction.create(payload);
 
     return res.status(201).json({ transaction: tx });
   } catch (err) {

@@ -8,6 +8,9 @@ function TransactionForm({ onCreated, staticCategories = [] }) {
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [expenseEssential, setExpenseEssential] = useState('');
+  const [saveAsRecurring, setSaveAsRecurring] = useState(false);
+  const [recurringName, setRecurringName] = useState('');
+  const [recurringDay, setRecurringDay] = useState(() => Math.min(new Date().getDate(), 28));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -48,13 +51,19 @@ function TransactionForm({ onCreated, staticCategories = [] }) {
       if (type === 'expense' && (expenseEssential === 'essential' || expenseEssential === 'nonessential')) {
         payload.expenseEssential = expenseEssential;
       }
-      await onCreated(payload);
+      await onCreated(payload, saveAsRecurring ? {
+        name: recurringName.trim() || category,
+        dayOfMonth: Number(recurringDay) || 1,
+      } : null);
       setType('expense');
       setAmount('');
       setCategory('');
       setTag('');
       setDescription('');
       setExpenseEssential('');
+      setSaveAsRecurring(false);
+      setRecurringName('');
+      setRecurringDay(Math.min(new Date().getDate(), 28));
       setDate(new Date().toISOString().slice(0, 10));
     } catch (err) {
       setError(err.message || 'Could not save transaction');
@@ -145,6 +154,36 @@ function TransactionForm({ onCreated, staticCategories = [] }) {
           <span>Date</span>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
+        <label className="field inline recurring-save-toggle">
+          <input
+            type="checkbox"
+            checked={saveAsRecurring}
+            onChange={(e) => setSaveAsRecurring(e.target.checked)}
+          />
+          <span>Save as recurring rule (same every month)</span>
+        </label>
+        {saveAsRecurring && (
+          <div className="recurring-inline-fields">
+            <label className="field">
+              <span>Rule name</span>
+              <input
+                value={recurringName}
+                onChange={(e) => setRecurringName(e.target.value)}
+                placeholder={category || 'e.g. Home Loan EMI'}
+              />
+            </label>
+            <label className="field">
+              <span>Day of month (1–28)</span>
+              <input
+                type="number"
+                min="1"
+                max="28"
+                value={recurringDay}
+                onChange={(e) => setRecurringDay(e.target.value)}
+              />
+            </label>
+          </div>
+        )}
       </div>
 
       {error && <div className="error-banner">{error}</div>}

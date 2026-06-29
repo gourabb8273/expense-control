@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useChartsExpand } from '../context/ChartsExpandContext';
 
 export default function CollapsibleChartCard({
   title,
@@ -7,7 +8,30 @@ export default function CollapsibleChartCard({
   wide = false,
   children,
 }) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  const { expandAll, expandAllGeneration } = useChartsExpand();
+  const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
+  const [collapsedInExpandAll, setCollapsedInExpandAll] = useState(false);
+
+  useEffect(() => {
+    if (!expandAll) {
+      setLocalExpanded(false);
+      setCollapsedInExpandAll(false);
+    }
+  }, [expandAll]);
+
+  useEffect(() => {
+    setCollapsedInExpandAll(false);
+  }, [expandAllGeneration]);
+
+  const expanded = expandAll ? !collapsedInExpandAll : localExpanded;
+
+  const handleToggle = () => {
+    if (expandAll) {
+      setCollapsedInExpandAll((v) => !v);
+    } else {
+      setLocalExpanded((v) => !v);
+    }
+  };
 
   return (
     <div
@@ -17,7 +41,7 @@ export default function CollapsibleChartCard({
       <button
         type="button"
         className="section-header-toggle chart-card-toggle"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={handleToggle}
         aria-expanded={expanded}
       >
         <span className="section-header-chevron" aria-hidden="true">

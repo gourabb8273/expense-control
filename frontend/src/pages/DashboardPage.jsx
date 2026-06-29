@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/api';
@@ -12,6 +12,26 @@ import { exportMonthlyPdf, exportYearlyPdf } from '../utils/exportPdf';
 import CashInflowSection from '../components/CashInflowSection';
 import { MonthlyCashInflowCharts, YearlyCashInflowCharts } from '../components/CashInflowCharts';
 import { MonthRemarkSection, YearRemarksSection } from '../components/RemarkSection';
+import { AllocationBar, KpiWithPct } from '../components/MoneyFlowSummary';
+import AlertsBanner, { buildMonthAlerts } from '../components/AlertsBanner';
+import StickyMonthSummary from '../components/StickyMonthSummary';
+import RecurringBanner from '../components/RecurringBanner';
+import ManageRecurringModal from '../components/ManageRecurringModal';
+import { KpiSkeletonGrid } from '../components/Skeleton';
+import { useToast } from '../context/ToastContext';
+import { ChartsExpandProvider, waitForChartRender } from '../context/ChartsExpandContext';
+import ChartsExpandToggle from '../components/ChartsExpandToggle';
+
+function netWorthFromSheet(data) {
+  const a = (data?.assets || []).reduce((s, i) => s + (Number(i.value) || 0), 0);
+  const d = (data?.debts || []).reduce((s, i) => s + (Number(i.value) || 0), 0);
+  return a - d;
+}
+
+function pctOfInflow(part, inflow) {
+  if (!inflow || inflow <= 0) return null;
+  return Math.round((part / inflow) * 1000) / 10;
+}
 
 function parseDescriptionBreakdown(description) {
   if (!description || typeof description !== 'string') return null;
@@ -38,6 +58,7 @@ function parseDescriptionBreakdown(description) {
 function DashboardPage() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const toast = useToast();
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [year, setYear] = useState(today.getFullYear());
@@ -56,6 +77,26 @@ function DashboardPage() {
   const [entriesExpanded, setEntriesExpanded] = useState(true);
   const [tagsRefreshKey, setTagsRefreshKey] = useState(0);
   const [cashflowRefreshKey, setCashflowRefreshKey] = useState(0);
+  const [recurringRefreshKey, setRecurringRefreshKey] = useState(0);
+  const [recurringModalOpen, setRecurringModalOpen] = useState(false);
+  const [balanceSheetMeta, setBalanceSheetMeta] = useState({
+    saved: false,
+    carried: false,
+    savedAt: null,
+    netWorth: 0,
+  });
+  const [prevMonthNetWorth, setPrevMonthNetWorth] = useState(null);
+  const [pendingRecurringCount, setPendingRecurringCount] = useState(0);
+  const [chartsExpandAll, setChartsExpandAll] = useState(false);
+  const [expandAllGeneration, setExpandAllGeneration] = useState(0);
+  const [lineChartFullWidth, setLineChartFullWidth] = useState(false);
+
+  const handleSetExpandAll = useCallback((value) => {
+    if (value) {
+      setExpandAllGeneration((g) => g + 1);
+    }
+    setChartsExpandAll(value);
+  }, []);
 
   const [monthInflowTotal, setMonthInflowTotal] = useState(0);
   const [monthInflows, setMonthInflows] = useState([]);
@@ -137,8 +178,63 @@ function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month, year]);
 
-  const handleCreateTransaction = async (payload) => {
+  useEffect(() => {
+    setChartsExpandAll(false);
+    setLineChartFullWidth(false);
+  }, [viewMode, year, month]);
+
+  useEffect(() => {
+    if (viewMode !== 'monthly') return undefined;
+    let cancelled = false;
+    api
+      .get('/recurring/pending', { params: { year, month } })
+      .then((res) => {
+        if (!cancelled) setPendingRecurringCount(res.data.pending?.length || 0);
+      })
+      .catch(() => {
+        if (!cancelled) setPendingRecurringCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [year, month, viewMode, recurringRefreshKey]);
+
+  useEffect(() => {
+    if (viewMode !== 'monthly') return undefined;
+    let cancelled = false;
+    const prevMonthNum = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    api
+      .get('/balance-sheet', { params: { year: prevYear, month: prevMonthNum } })
+      .then((res) => {
+        if (!cancelled) setPrevMonthNetWorth(netWorthFromSheet(res.data));
+      })
+      .catch(() => {
+        if (!cancelled) setPrevMonthNetWorth(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [year, month, viewMode, balanceSheetRefreshKey]);
+
+  const handleCreateTransaction = async (payload, recurringMeta) => {
     const res = await api.post('/transactions', payload);
+    if (recurringMeta) {
+      await api.post('/recurring', {
+        name: recurringMeta.name,
+        type: payload.type,
+        amount: payload.amount,
+        category: payload.category,
+        tag: payload.tag || '',
+        description: payload.description || '',
+        expenseEssential: payload.expenseEssential,
+        dayOfMonth: recurringMeta.dayOfMonth,
+      });
+      toast.success('Entry saved and recurring rule created');
+      setRecurringRefreshKey((k) => k + 1);
+    } else {
+      toast.success('Entry saved');
+    }
     await loadData(month, year);
     return res.data.transaction;
   };
@@ -149,6 +245,7 @@ function DashboardPage() {
     const ok = window.confirm('Delete this entry? This cannot be undone.');
     if (!ok) return;
     await api.delete(`/transactions/${id}`);
+    toast.success('Entry deleted');
     await loadData(month, year);
   };
 
@@ -178,19 +275,22 @@ function DashboardPage() {
     }
     await api.put(`/transactions/${editingTx._id}`, payload);
     setEditingTx(null);
+    toast.success('Entry updated');
     await loadData(month, year);
   };
 
-  const captureChartImages = (sectionClass) => {
-    const section = document.querySelector(sectionClass);
-    if (!section) return [];
-    const cards = section.querySelectorAll('.chart-card[data-chart-title]');
+  const collectChartImages = (...sectionSelectors) => {
     const images = [];
-    cards.forEach((card) => {
-      const canvas = card.querySelector('canvas');
-      const title = card.getAttribute('data-chart-title');
-      if (canvas && title) {
+    const seen = new Set();
+    sectionSelectors.forEach((sectionClass) => {
+      const section = document.querySelector(sectionClass);
+      if (!section) return;
+      section.querySelectorAll('.chart-card[data-chart-title]').forEach((card) => {
+        const canvas = card.querySelector('canvas');
+        const title = card.getAttribute('data-chart-title');
+        if (!canvas || !title || seen.has(title)) return;
         try {
+          seen.add(title);
           images.push({
             title,
             dataUrl: canvas.toDataURL('image/png'),
@@ -198,15 +298,20 @@ function DashboardPage() {
             height: canvas.height,
           });
         } catch (_) {}
-      }
+      });
     });
     return images;
   };
 
   const handleExportMonthlyPdf = async () => {
     setExportingPdf(true);
+    const prevExpand = chartsExpandAll;
+    const prevLineWidth = lineChartFullWidth;
     try {
-      const chartImages = captureChartImages('.monthly-charts');
+      setChartsExpandAll(true);
+      setLineChartFullWidth(true);
+      await waitForChartRender();
+      const chartImages = collectChartImages('.cash-inflow-charts', '.monthly-charts');
       await exportMonthlyPdf({
         year,
         month,
@@ -216,25 +321,41 @@ function DashboardPage() {
         chartImages,
         cashflow: getCashflowNum(year, month),
         inflows: monthInflows,
+        netWorth: balanceSheetMeta.netWorth,
+        netWorthChange,
       });
+      toast.success('Monthly PDF exported');
     } catch (err) {
       console.error('Export PDF failed', err);
+      toast.error('PDF export failed');
     } finally {
+      setChartsExpandAll(prevExpand);
+      setLineChartFullWidth(prevLineWidth);
       setExportingPdf(false);
     }
   };
 
   const handleExportYearlyPdf = async () => {
     setExportingPdf(true);
+    const prevExpand = chartsExpandAll;
+    const prevLineWidth = lineChartFullWidth;
     try {
-      const chartImages = [
-        ...captureChartImages('.yearly-trend-top'),
-        ...captureChartImages('.yearly-charts'),
-      ];
+      setChartsExpandAll(true);
+      setLineChartFullWidth(true);
+      await waitForChartRender();
+      const chartImages = collectChartImages(
+        '.yearly-cash-inflow-charts',
+        '.yearly-charts',
+        '.balance-sheet-year-card'
+      );
       await exportYearlyPdf({ year, yearlySummary, api, chartImages, yearlyCashflow: yearlyCashflowArray });
+      toast.success('Yearly PDF exported');
     } catch (err) {
       console.error('Export PDF failed', err);
+      toast.error('PDF export failed');
     } finally {
+      setChartsExpandAll(prevExpand);
+      setLineChartFullWidth(prevLineWidth);
       setExportingPdf(false);
     }
   };
@@ -362,7 +483,56 @@ function DashboardPage() {
     };
   })();
 
+  const lastEntryAt = useMemo(() => {
+    if (!transactions.length) return null;
+    const times = transactions.map((tx) => new Date(tx.updatedAt || tx.date).getTime());
+    return new Date(Math.max(...times));
+  }, [transactions]);
+
+  const untaggedExpenseAmount = useMemo(
+    () =>
+      transactions
+        .filter((tx) => tx.type === 'expense' && !(tx.tag || '').trim())
+        .reduce((s, tx) => s + (Number(tx.amount) || 0), 0),
+    [transactions]
+  );
+
+  const netWorthChange =
+    prevMonthNetWorth != null ? balanceSheetMeta.netWorth - prevMonthNetWorth : null;
+
+  const monthAlerts = useMemo(
+    () =>
+      buildMonthAlerts({
+        inflow: cashflowAmount,
+        expense: expenseAmount,
+        investment: investmentAmount,
+        remaining: remainingBalance,
+        balanceSheetSaved: balanceSheetMeta.saved,
+        balanceSheetCarried: balanceSheetMeta.carried,
+        pendingRecurringCount,
+        untaggedExpenseAmount,
+        netWorthDown: netWorthChange != null && netWorthChange < 0,
+      }),
+    [
+      cashflowAmount,
+      expenseAmount,
+      investmentAmount,
+      remainingBalance,
+      balanceSheetMeta,
+      pendingRecurringCount,
+      untaggedExpenseAmount,
+      netWorthChange,
+    ]
+  );
+
   return (
+    <ChartsExpandProvider
+      expandAll={chartsExpandAll}
+      setExpandAll={handleSetExpandAll}
+      expandAllGeneration={expandAllGeneration}
+      lineChartFullWidth={lineChartFullWidth}
+      setLineChartFullWidth={setLineChartFullWidth}
+    >
     <div className="app-shell">
       <header className="top-bar">
         <div>
@@ -380,6 +550,9 @@ function DashboardPage() {
           >
             {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
           </button>
+          <button type="button" className="ghost-btn" onClick={() => setRecurringModalOpen(true)}>
+            Manage recurring
+          </button>
           <button type="button" className="ghost-btn" onClick={() => setCategoriesModalOpen(true)}>
             Manage categories
           </button>
@@ -395,6 +568,12 @@ function DashboardPage() {
           loadData(month, year);
           setTagsRefreshKey((k) => k + 1);
         }}
+      />
+      <ManageRecurringModal
+        isOpen={recurringModalOpen}
+        onClose={() => setRecurringModalOpen(false)}
+        staticCategories={staticCategories}
+        onSaved={() => setRecurringRefreshKey((k) => k + 1)}
       />
 
       <main className="content">
@@ -465,6 +644,17 @@ function DashboardPage() {
                   </select>
                 </label>
               </div>
+              <StickyMonthSummary
+                year={year}
+                month={month}
+                inflow={cashflowAmount}
+                expense={expenseAmount}
+                investment={investmentAmount}
+                remaining={remainingBalance}
+                netWorth={balanceSheetMeta.netWorth}
+                netWorthChange={netWorthChange}
+                loading={loading}
+              />
               <div className="monthly-cashflow">
                 <CashInflowSection
                   year={year}
@@ -474,26 +664,69 @@ function DashboardPage() {
                   onInflowsChange={setMonthInflows}
                 />
                 <div className="monthly-kpis monthly-cashflow-grid monthly-cashflow-summary">
-                  <div className="kpi">
-                    <span className="kpi-label">Expense</span>
-                    <span className="kpi-value">₹{expenseAmount.toLocaleString()}</span>
-                  </div>
-                  <div className="kpi">
-                    <span className="kpi-label">Investment</span>
-                    <span className="kpi-value">₹{investmentAmount.toLocaleString()}</span>
-                  </div>
-                  <div className="kpi">
+                  {loading ? (
+                    <KpiSkeletonGrid count={5} />
+                  ) : (
+                    <>
+                  <KpiWithPct
+                    label="Expense"
+                    amount={expenseAmount}
+                    pctOfInflow={pctOfInflow(expenseAmount, cashflowAmount)}
+                    className="expense"
+                  />
+                  <KpiWithPct
+                    label="Investment"
+                    amount={investmentAmount}
+                    pctOfInflow={pctOfInflow(investmentAmount, cashflowAmount)}
+                    className="invest"
+                  />
+                  <div className="kpi kpi-with-pct outflow">
                     <span className="kpi-label">Total outflow</span>
-                    <span className="kpi-value">₹{totalForMonth.toLocaleString()}</span>
+                    <span className="kpi-value outflow">₹{totalForMonth.toLocaleString('en-IN')}</span>
+                    {cashflowAmount > 0 && (
+                      <span className="kpi-pct muted small">
+                        {pctOfInflow(totalForMonth, cashflowAmount)}% of inflow
+                      </span>
+                    )}
                   </div>
-                  <div className="kpi">
-                    <span className="kpi-label">Remaining</span>
-                    <span className={`kpi-value ${remainingBalance >= 0 ? 'positive' : 'negative'}`}>
-                      ₹{remainingBalance.toLocaleString()}
+                  <KpiWithPct
+                    label="Remaining"
+                    amount={remainingBalance}
+                    pctOfInflow={remainingBalance >= 0 ? pctOfInflow(remainingBalance, cashflowAmount) : null}
+                    className={remainingBalance >= 0 ? 'positive' : 'negative'}
+                  />
+                  <div className="kpi kpi-with-pct kpi-networth">
+                    <span className="kpi-label">Net worth</span>
+                    <span className={`kpi-value networth ${balanceSheetMeta.netWorth >= 0 ? '' : 'negative'}`}>
+                      ₹{balanceSheetMeta.netWorth.toLocaleString('en-IN')}
                     </span>
+                    {netWorthChange != null && (
+                      <span className={`kpi-pct ${netWorthChange >= 0 ? 'positive' : 'negative'}`}>
+                        {netWorthChange >= 0 ? '+' : '-'}₹{Math.abs(netWorthChange).toLocaleString('en-IN')} vs last month
+                      </span>
+                    )}
                   </div>
+                    </>
+                  )}
+                  {!loading && (
+                    <AllocationBar
+                      inflow={cashflowAmount}
+                      investment={investmentAmount}
+                      expense={expenseAmount}
+                    />
+                  )}
                 </div>
               </div>
+              <AlertsBanner alerts={monthAlerts} />
+              <RecurringBanner
+                year={year}
+                month={month}
+                refreshKey={recurringRefreshKey}
+                onApplied={() => {
+                  loadData(month, year);
+                  setRecurringRefreshKey((k) => k + 1);
+                }}
+              />
               <MonthRemarkSection key={`${year}-${month}`} year={year} month={month} />
             </>
           )}
@@ -537,7 +770,13 @@ function DashboardPage() {
                       <span className="pill list-header-count">{transactions.length}</span>
                     )}
                   </button>
-                  {loading && <span className="pill">Loading…</span>}
+                  {loading ? (
+                    <span className="pill pill-loading">Loading…</span>
+                  ) : lastEntryAt ? (
+                    <span className="pill pill-meta" title="Most recent entry this month">
+                      Last entry · {lastEntryAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    </span>
+                  ) : null}
                 </div>
                 {entriesExpanded && (
                   <>
@@ -773,9 +1012,14 @@ function DashboardPage() {
                 year={year}
                 month={month}
                 tagsRefreshKey={tagsRefreshKey}
-                onSaved={() => setBalanceSheetRefreshKey((k) => k + 1)}
+                onMetaChange={setBalanceSheetMeta}
+                onSaved={() => {
+                  setBalanceSheetRefreshKey((k) => k + 1);
+                  toast.success('Balance sheet saved');
+                }}
               />
             </div>
+            <ChartsExpandToggle />
             <MonthlyCashInflowCharts inflows={monthInflows} year={year} month={month} />
             <div className="charts-at-bottom">
               <MonthlyCharts
@@ -822,13 +1066,13 @@ function DashboardPage() {
                           </div>
                           <div className="kpi">
                             <span className="kpi-label">Total investment (year)</span>
-                            <span className="kpi-value">
+                            <span className="kpi-value invest">
                               ₹{yearlyInvestment.toLocaleString('en-IN')}
                             </span>
                           </div>
                           <div className="kpi">
                             <span className="kpi-label">Total expense (year)</span>
-                            <span className="kpi-value">
+                            <span className="kpi-value expense">
                               ₹{yearlyExpense.toLocaleString('en-IN')}
                             </span>
                           </div>
@@ -841,6 +1085,11 @@ function DashboardPage() {
                             </span>
                           </div>
                         </div>
+                        <AllocationBar
+                          inflow={yearlyCashflow}
+                          investment={yearlyInvestment}
+                          expense={yearlyExpense}
+                        />
                         <div className="month-strip month-strip-net">
                           {yearlySummary.monthly.map((m, idx) => {
                             const inv = m.totalInvestment || 0;
@@ -899,17 +1148,19 @@ function DashboardPage() {
                   })()}
                 </div>
               )}
+              <ChartsExpandToggle />
               <YearlyTrendChart yearly={yearlySummary} />
               <BalanceSheetYearSection year={year} refreshKey={balanceSheetRefreshKey} />
             </div>
             <div className="charts-at-bottom">
-              <YearlyCashInflowCharts year={year} refreshKey={cashflowRefreshKey} />
-              <YearlyCharts yearly={yearlySummary} yearlyCashflow={yearlyCashflowArray} />
+              <YearlyCashInflowCharts key={year} year={year} refreshKey={cashflowRefreshKey} />
+              <YearlyCharts key={year} yearly={yearlySummary} yearlyCashflow={yearlyCashflowArray} />
             </div>
           </section>
         )}
       </main>
     </div>
+    </ChartsExpandProvider>
   );
 }
 

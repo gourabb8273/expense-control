@@ -14,6 +14,8 @@ import {
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import CollapsibleChartCard from './CollapsibleChartCard';
+import LineChartFrame from './LineChartFrame';
+import TrendLineWidthToggle from './TrendLineWidthToggle';
 
 ChartJS.register(
   CategoryScale,
@@ -102,10 +104,9 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText }) {
   const optionsPie = { plugins: { datalabels: { display: false } } };
 
   return (
-    <div className="card chart-card" data-chart-title={title}>
-      <div className="chart-header-row">
-        <h3 style={{ marginBottom: 0 }}>{title}</h3>
-        {tags.length > 0 && (
+    <CollapsibleChartCard title={title} chartTitle={title}>
+      {tags.length > 0 && (
+        <div className="chart-header-row">
           <select
             value={effectiveSelectedTag}
             onChange={(e) => setSelectedTag(e.target.value)}
@@ -118,8 +119,8 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText }) {
               </option>
             ))}
           </select>
-        )}
-      </div>
+        </div>
+      )}
       {tags.length > 0 && items.length > 0 ? (
         <>
           <Pie data={pieData} options={optionsPie} />
@@ -129,7 +130,7 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText }) {
       ) : (
         <p className="muted small">{emptyText}</p>
       )}
-    </div>
+    </CollapsibleChartCard>
   );
 }
 
@@ -169,13 +170,20 @@ function YearlyTrendChart({ yearly }) {
   const optionsLine = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
     plugins: {
       datalabels: { display: false },
       legend: { position: 'bottom' },
     },
     scales: {
-      x: { ticks: { color: '#9ca3af' } },
-      y: { ticks: { color: '#9ca3af' } },
+      x: {
+        ticks: { color: '#9ca3af', maxRotation: 0, autoSkip: false },
+        grid: { display: false },
+      },
+      y: {
+        ticks: { color: '#9ca3af', maxTicksLimit: 6 },
+        grid: { color: 'rgba(148, 163, 184, 0.12)' },
+      },
     },
   };
 
@@ -185,11 +193,14 @@ function YearlyTrendChart({ yearly }) {
 
   return (
     <div className="charts-section yearly-charts yearly-trend-top">
-      <div className="card chart-card chart-card-wide" data-chart-title="Trend (line)">
-        <h3>Trend (line)</h3>
-        <div className="chart-wrap chart-wrap-line">
-          <Line data={lineData} options={optionsLine} />
+      <div className="card chart-card chart-card-wide trend-line-card" data-chart-title="Trend (line)">
+        <div className="trend-line-header">
+          <h3>Trend (line)</h3>
+          <TrendLineWidthToggle />
         </div>
+        <LineChartFrame monthCount={monthLabels.length} className="chart-wrap chart-wrap-line">
+          <Line data={lineData} options={optionsLine} />
+        </LineChartFrame>
         <ChartTotal amount={totalYearAllMonths} label="Year total" />
         <div className="chart-list-wrapper">
           <p className="chart-list-title">Month breakdown · total and inv/exp split</p>
@@ -574,8 +585,7 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
             <p className="muted small">No expense data this year.</p>
           )}
         </CollapsibleChartCard>
-        <div className="card chart-card" data-chart-title="Expense · essential (year)">
-          <h3>Expense · essential split (year)</h3>
+        <CollapsibleChartCard title="Expense · essential split (year)" chartTitle="Expense · essential (year)">
           {totalExpenseYear > 0 ? (
             <>
               <Pie data={essentialYearPieData} options={optionsPie} />
@@ -585,9 +595,8 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           ) : (
             <p className="muted small">No expense data this year.</p>
           )}
-        </div>
-        <div className="card chart-card" data-chart-title="Investment by category (year)">
-          <h3>Investment by category (year)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Investment by category (year)" chartTitle="Investment by category (year)">
           {investmentCategories.length > 0 ? (
             <>
               <Pie data={investmentPieData} options={optionsPie} />
@@ -601,9 +610,8 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           ) : (
             <p className="muted small">No investment data this year.</p>
           )}
-        </div>
-        <div className="card chart-card" data-chart-title="Expense by category (year)">
-          <h3>Expense by category (year)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Expense by category (year)" chartTitle="Expense by category (year)">
           {expenseCategories.length > 0 ? (
             <>
               <Pie data={expensePieData} options={optionsPie} />
@@ -617,9 +625,8 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           ) : (
             <p className="muted small">No expense data this year.</p>
           )}
-        </div>
-        <div className="card chart-card" data-chart-title="By category (all, year)">
-          <h3>By category (all, year)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="By category (all, year)" chartTitle="By category (all, year)">
           {categories.length > 0 ? (
             <>
               <Pie data={allCategoriesPieData} options={optionsPie} />
@@ -633,9 +640,8 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           ) : (
             <p className="muted small">No category data this year.</p>
           )}
-        </div>
-        <div className="card chart-card" data-chart-title="Investment by tag (year)">
-          <h3>Investment by tag (year)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Investment by tag (year)" chartTitle="Investment by tag (year)">
           {investmentByTag.length > 0 ? (
             <>
               <Pie data={investmentByTagPieData} options={optionsPie} />
@@ -649,9 +655,8 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           ) : (
             <p className="muted small">Tag investment entries for this chart.</p>
           )}
-        </div>
-        <div className="card chart-card" data-chart-title="Expense by tag (year)">
-          <h3>Expense by tag (year)</h3>
+        </CollapsibleChartCard>
+        <CollapsibleChartCard title="Expense by tag (year)" chartTitle="Expense by tag (year)">
           {expenseByTag.length > 0 ? (
             <>
               <Pie data={expenseByTagPieData} options={optionsPie} />
@@ -665,7 +670,7 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
           ) : (
             <p className="muted small">Tag expense entries for this chart.</p>
           )}
-        </div>
+        </CollapsibleChartCard>
         <TitleTagBreakdownCard
           title="Expense by destination (title, year)"
           breakdown={expenseTitleTagBreakdown}

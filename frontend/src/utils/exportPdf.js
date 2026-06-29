@@ -50,7 +50,18 @@ function addChartImagesToPdf(doc, chartImages, startY) {
   return y;
 }
 
-export async function exportMonthlyPdf({ year, month, monthlySummary, transactions, api, chartImages, cashflow = 0, inflows = [] }) {
+export async function exportMonthlyPdf({
+  year,
+  month,
+  monthlySummary,
+  transactions,
+  api,
+  chartImages,
+  cashflow = 0,
+  inflows = [],
+  netWorth = null,
+  netWorthChange = null,
+}) {
   const doc = new jsPDF();
   const monthLabel = MONTH_NAMES[month] || month;
   const ms = monthlySummary || {};
@@ -61,6 +72,12 @@ export async function exportMonthlyPdf({ year, month, monthlySummary, transactio
   const expPct = totalSum > 0 ? Math.round((totalExp / totalSum) * 100) : 0;
   const cashflowNum = Number(cashflow) || 0;
   const remaining = cashflowNum - totalSum;
+  const expPctInflow = cashflowNum > 0 ? Math.round((totalExp / cashflowNum) * 1000) / 10 : null;
+  const invPctInflow = cashflowNum > 0 ? Math.round((totalInv / cashflowNum) * 1000) / 10 : null;
+  const outflowPctInflow =
+    cashflowNum > 0 ? Math.round((totalSum / cashflowNum) * 1000) / 10 : null;
+  const remainPctInflow =
+    cashflowNum > 0 ? Math.round((remaining / cashflowNum) * 1000) / 10 : null;
 
   // ——— Page 1: Executive summary ———
   doc.setFontSize(18);
@@ -94,14 +111,28 @@ export async function exportMonthlyPdf({ year, month, monthlySummary, transactio
   doc.text(`Total cash inflow: ${RU}${cashflowNum.toLocaleString('en-IN')}`, MARGIN, y);
   doc.setFont('helvetica', 'normal');
   y += 8;
-  doc.text(`Expense: ${RU}${totalExp.toLocaleString('en-IN')}`, MARGIN, y);
+  doc.text(`Expense: ${RU}${totalExp.toLocaleString('en-IN')}${expPctInflow != null ? ` (${expPctInflow}% of inflow)` : ''}`, MARGIN, y);
   y += 6;
-  doc.text(`Investment: ${RU}${totalInv.toLocaleString('en-IN')}`, MARGIN, y);
+  doc.text(`Investment: ${RU}${totalInv.toLocaleString('en-IN')}${invPctInflow != null ? ` (${invPctInflow}% of inflow)` : ''}`, MARGIN, y);
   y += 6;
-  doc.text(`Total (Expense + Investment): ${RU}${totalSum.toLocaleString('en-IN')}`, MARGIN, y);
+  doc.text(`Total outflow: ${RU}${totalSum.toLocaleString('en-IN')}${outflowPctInflow != null ? ` (${outflowPctInflow}% of inflow)` : ''}`, MARGIN, y);
   y += 6;
-  doc.text(`Remaining: ${RU}${remaining.toLocaleString('en-IN')}`, MARGIN, y);
-  y += 10;
+  doc.text(`Remaining: ${RU}${remaining.toLocaleString('en-IN')}${remainPctInflow != null ? ` (${remainPctInflow}% of inflow)` : ''}`, MARGIN, y);
+  y += 6;
+  if (netWorth != null && Number.isFinite(Number(netWorth))) {
+    doc.text(`Net worth: ${RU}${Number(netWorth).toLocaleString('en-IN')}`, MARGIN, y);
+    y += 6;
+    if (netWorthChange != null && Number.isFinite(Number(netWorthChange))) {
+      const sign = netWorthChange >= 0 ? '+' : '-';
+      doc.text(
+        `Net worth vs last month: ${sign}${RU}${Math.abs(Number(netWorthChange)).toLocaleString('en-IN')}`,
+        MARGIN,
+        y
+      );
+      y += 6;
+    }
+  }
+  y += 4;
 
   doc.setFont('helvetica', 'bold');
   doc.text('Summary', MARGIN, y);

@@ -87,6 +87,7 @@ router.get('/', async (req, res) => {
       debts: cloneLines(doc.debts),
       carriedFrom: null,
       saved: true,
+      savedAt: doc.updatedAt || doc.createdAt,
     });
   } catch (err) {
     console.error('Get balance sheet error', err);
@@ -188,6 +189,7 @@ router.put('/', async (req, res) => {
       assets: cloneLines(doc.assets),
       debts: cloneLines(doc.debts),
       saved: true,
+      savedAt: doc.updatedAt || doc.createdAt,
     });
   } catch (err) {
     console.error('Put balance sheet error', err);

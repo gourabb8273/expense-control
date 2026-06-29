@@ -22,21 +22,85 @@ function cloneItems(list) {
   }));
 }
 
-function TagSelect({ value, options, onChange, placeholder }) {
+function TagField({ value, options, onChange, placeholder }) {
+  const optionNames = options.map((t) => t.name);
+  const trimmed = (value || '').trim();
+  const orphanTag = trimmed && !optionNames.includes(trimmed);
+
   return (
-    <select
-      className="balance-sheet-tag-select"
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-      title="Tag"
-    >
-      <option value="">{placeholder}</option>
-      {options.map((t) => (
-        <option key={t._id} value={t.name}>
-          {t.name}
-        </option>
-      ))}
-    </select>
+    <div className="bs-field bs-field-tag">
+      <span className="bs-field-label bs-field-label-tag">
+        <span className="bs-tag-icon" aria-hidden="true">⌁</span>
+        Tag
+      </span>
+      <select
+        className="balance-sheet-tag-select"
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        title="Group line items under this tag"
+      >
+        <option value="">{placeholder}</option>
+        {orphanTag && (
+          <option value={trimmed}>{trimmed}</option>
+        )}
+        {options.map((t) => (
+          <option key={t._id} value={t.name}>
+            {t.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function BalanceSheetLineRow({
+  item,
+  index,
+  tagOptions,
+  onUpdate,
+  onRemove,
+  namePlaceholder,
+}) {
+  return (
+    <div className="balance-sheet-row">
+      <div className="bs-field bs-field-name">
+        <span className="bs-field-label">Line item</span>
+        <input
+          type="text"
+          className="bs-field-name-input"
+          value={item.name}
+          onChange={(e) => onUpdate(index, 'name', e.target.value)}
+          placeholder={namePlaceholder}
+        />
+      </div>
+      <TagField
+        value={item.tag}
+        options={tagOptions}
+        onChange={(v) => onUpdate(index, 'tag', v)}
+        placeholder="— No tag —"
+      />
+      <div className="bs-field bs-field-value">
+        <span className="bs-field-label">Value (₹)</span>
+        <input
+          type="number"
+          className="bs-field-value-input"
+          min="0"
+          step="1"
+          value={item.value || ''}
+          onChange={(e) => onUpdate(index, 'value', e.target.value)}
+          placeholder="0"
+        />
+      </div>
+      <button
+        type="button"
+        className="link-btn danger small bs-field-remove"
+        onClick={() => onRemove(index)}
+        title="Remove row"
+        aria-label="Remove row"
+      >
+        ✕
+      </button>
+    </div>
   );
 }
 
@@ -62,13 +126,14 @@ function ChartBreakdownList({ items, labelKey, total }) {
   );
 }
 
-function BalanceSheetSection({ year, month, onSaved, tagsRefreshKey = 0 }) {
+function BalanceSheetSection({ year, month, onSaved, onMetaChange, tagsRefreshKey = 0 }) {
   const [assets, setAssets] = useState([]);
   const [debts, setDebts] = useState([]);
   const [assetTags, setAssetTags] = useState([]);
   const [debtTags, setDebtTags] = useState([]);
   const [carriedFrom, setCarriedFrom] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -108,6 +173,7 @@ function BalanceSheetSection({ year, month, onSaved, tagsRefreshKey = 0 }) {
         setDebts(cloneItems(res.data.debts));
         setCarriedFrom(res.data.carriedFrom || null);
         setSaved(res.data.saved || false);
+        setSavedAt(res.data.savedAt || null);
       } catch (err) {
         if (!cancelled) {
           setError(err.response?.data?.message || 'Failed to load balance sheet');
@@ -121,11 +187,20 @@ function BalanceSheetSection({ year, month, onSaved, tagsRefreshKey = 0 }) {
     return () => {
       cancelled = true;
     };
-  }, [year, month]);
+  }, [year, month, tagsRefreshKey]);
 
   const totalAssets = assets.reduce((s, i) => s + (Number(i.value) || 0), 0);
   const totalDebts = debts.reduce((s, i) => s + (Number(i.value) || 0), 0);
   const netWorth = totalAssets - totalDebts;
+
+  useEffect(() => {
+    onMetaChange?.({
+      saved,
+      carried: !!carriedFrom,
+      savedAt,
+      netWorth,
+    });
+  }, [netWorth, saved, carriedFrom, savedAt, onMetaChange]);
 
   const assetsWithValue = assets.filter((a) => (a.name || '').trim() && (Number(a.value) || 0) > 0);
   const debtsWithValue = debts.filter((d) => (d.name || '').trim() && (Number(d.value) || 0) > 0);
@@ -190,6 +265,7 @@ function BalanceSheetSection({ year, month, onSaved, tagsRefreshKey = 0 }) {
       });
       setSaved(true);
       setCarriedFrom(null);
+      setSavedAt(new Date().toISOString());
       onSaved?.();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save');
@@ -229,7 +305,11 @@ function BalanceSheetSection({ year, month, onSaved, tagsRefreshKey = 0 }) {
               Carried from {MONTH_NAMES[carriedFrom.month]} {carriedFrom.year}
             </span>
           )}
-          {saved && !carriedFrom && <span className="pill saved-pill">Saved</span>}
+          {saved && !carriedFrom && (
+            <span className="pill saved-pill">
+              Saved{savedAt ? ` · ${new Date(savedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''}
+            </span>
+          )}
         </div>
       </div>
 
@@ -249,38 +329,15 @@ function BalanceSheetSection({ year, month, onSaved, tagsRefreshKey = 0 }) {
                 <div className="balance-sheet-column">
                   <h3>Assets</h3>
                   {assets.map((item, i) => (
-                    <div key={`a-${i}`} className="balance-sheet-row">
-                      <input
-                        type="text"
-                        className="bs-field-name"
-                        value={item.name}
-                        onChange={(e) => updateAsset(i, 'name', e.target.value)}
-                        placeholder="e.g. Gold coin 2gm 22k"
-                      />
-                      <TagSelect
-                        value={item.tag}
-                        options={assetTags}
-                        onChange={(v) => updateAsset(i, 'tag', v)}
-                        placeholder="Tag"
-                      />
-                      <input
-                        type="number"
-                        className="bs-field-value"
-                        min="0"
-                        step="1"
-                        value={item.value || ''}
-                        onChange={(e) => updateAsset(i, 'value', e.target.value)}
-                        placeholder="Value"
-                      />
-                      <button
-                        type="button"
-                        className="link-btn danger small bs-field-remove"
-                        onClick={() => removeAsset(i)}
-                        title="Remove asset"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                    <BalanceSheetLineRow
+                      key={`a-${i}`}
+                      item={item}
+                      index={i}
+                      tagOptions={assetTags}
+                      onUpdate={updateAsset}
+                      onRemove={removeAsset}
+                      namePlaceholder="e.g. Gold coin 2gm 22k"
+                    />
                   ))}
                   <button type="button" className="ghost-btn small" onClick={addAsset}>+ Add asset</button>
                   <div className="balance-sheet-total">
@@ -291,38 +348,15 @@ function BalanceSheetSection({ year, month, onSaved, tagsRefreshKey = 0 }) {
                 <div className="balance-sheet-column">
                   <h3>Debts / Liabilities</h3>
                   {debts.map((item, i) => (
-                    <div key={`d-${i}`} className="balance-sheet-row">
-                      <input
-                        type="text"
-                        className="bs-field-name"
-                        value={item.name}
-                        onChange={(e) => updateDebt(i, 'name', e.target.value)}
-                        placeholder="e.g. Home loan"
-                      />
-                      <TagSelect
-                        value={item.tag}
-                        options={debtTags}
-                        onChange={(v) => updateDebt(i, 'tag', v)}
-                        placeholder="Tag"
-                      />
-                      <input
-                        type="number"
-                        className="bs-field-value"
-                        min="0"
-                        step="1"
-                        value={item.value || ''}
-                        onChange={(e) => updateDebt(i, 'value', e.target.value)}
-                        placeholder="Value"
-                      />
-                      <button
-                        type="button"
-                        className="link-btn danger small bs-field-remove"
-                        onClick={() => removeDebt(i)}
-                        title="Remove debt"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                    <BalanceSheetLineRow
+                      key={`d-${i}`}
+                      item={item}
+                      index={i}
+                      tagOptions={debtTags}
+                      onUpdate={updateDebt}
+                      onRemove={removeDebt}
+                      namePlaceholder="e.g. Home loan"
+                    />
                   ))}
                   <button type="button" className="ghost-btn small" onClick={addDebt}>+ Add debt</button>
                   <div className="balance-sheet-total">
