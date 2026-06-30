@@ -71,13 +71,14 @@ function BalanceSheetLineRow({
           value={item.name}
           onChange={(e) => onUpdate(index, 'name', e.target.value)}
           placeholder={namePlaceholder}
+          aria-label="Line item name"
         />
       </div>
       <TagField
         value={item.tag}
         options={tagOptions}
         onChange={(v) => onUpdate(index, 'tag', v)}
-        placeholder="— No tag —"
+        placeholder="Tag"
       />
       <div className="bs-field bs-field-value">
         <span className="bs-field-label">Value (₹)</span>
@@ -86,9 +87,11 @@ function BalanceSheetLineRow({
           className="bs-field-value-input"
           min="0"
           step="1"
+          inputMode="numeric"
           value={item.value || ''}
           onChange={(e) => onUpdate(index, 'value', e.target.value)}
-          placeholder="0"
+          placeholder="Amount"
+          aria-label="Value in rupees"
         />
       </div>
       <button

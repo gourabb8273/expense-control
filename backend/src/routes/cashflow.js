@@ -1,54 +1,183 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Cashflow = require('../models/Cashflow');
+const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
 
 router.use(auth);
+router.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
+const MONTH_NAMES = [
+  '',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+function normalizeKind(rawKind) {
+  if (rawKind === 'salary') return 'salary';
+  if (rawKind === 'carryforward') return 'carryforward';
+  return 'custom';
+}
+
+function defaultLabelForKind(kind) {
+  if (kind === 'salary') return 'Salary';
+  if (kind === 'carryforward') return 'Carried from previous month';
+  return 'Other';
+}
 
 function sanitizeInflows(raw) {
   if (!Array.isArray(raw)) return [];
+  let carryForwardSeen = false;
   return raw
     .map((row) => {
-      const kind = row.kind === 'salary' ? 'salary' : 'custom';
-      const label = String(row.label || '').trim() || (kind === 'salary' ? 'Salary' : 'Other');
+      const kind = normalizeKind(row.kind);
+      if (kind === 'carryforward' && carryForwardSeen) return null;
+      if (kind === 'carryforward') carryForwardSeen = true;
+      const label =
+        String(row.label || '').trim() || defaultLabelForKind(kind);
       return {
         label,
         amount: Math.max(0, Number(row.amount) || 0),
         kind,
       };
     })
-    .filter((row) => row.kind === 'salary' || row.amount > 0 || row.label !== 'Other');
+    .filter(
+      (row) =>
+        row &&
+        (row.kind === 'salary' ||
+          row.kind === 'carryforward' ||
+          row.amount > 0 ||
+          row.label !== 'Other')
+    );
 }
 
-function resolveInflows(row, fallbackSalary = 0) {
-  if (row) {
-    const legacyAmount = Number(row.amount) || 0;
-    if (row.inflows?.length) {
-      const mapped = row.inflows.map((r) => ({
-        label: r.label,
-        amount: r.amount || 0,
-        kind: r.kind === 'salary' ? 'salary' : 'custom',
-      }));
-      const inflowTotal = Cashflow.totalFromInflows(mapped);
-      if (inflowTotal > 0) return mapped;
-      if (legacyAmount > 0) {
-        return [{ label: 'Salary', amount: legacyAmount, kind: 'salary' }];
-      }
-    } else if (legacyAmount > 0) {
-      return [{ label: 'Salary', amount: legacyAmount, kind: 'salary' }];
-    }
-    if (fallbackSalary > 0) {
-      return [{ label: 'Salary', amount: fallbackSalary, kind: 'salary' }];
-    }
+function orderInflows(inflows) {
+  const salary = inflows.filter((r) => r.kind === 'salary');
+  const carry = inflows.filter((r) => r.kind === 'carryforward');
+  const custom = inflows.filter((r) => r.kind !== 'salary' && r.kind !== 'carryforward');
+  const salaryRow = salary[0] || { label: 'Salary', amount: 0, kind: 'salary' };
+  return [salaryRow, ...carry, ...custom];
+}
+
+async function getMonthRemaining(userId, year, month) {
+  let row = await Cashflow.findOne({ userId, year, month });
+  row = await maybeMigrateLegacyCashflow(row, year, month);
+  const inflows = row ? resolveInflows(row) : [{ label: 'Salary', amount: 0, kind: 'salary' }];
+  const inflowTotal = Cashflow.totalFromInflows(inflows);
+
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 1);
+  const transactions = await Transaction.find({
+    userId,
+    date: { $gte: start, $lt: end },
+  });
+  const expense = transactions
+    .filter((t) => t.type === 'expense')
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  const investment = transactions
+    .filter((t) => t.type === 'investment')
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+  return {
+    inflowTotal,
+    expense,
+    investment,
+    remaining: inflowTotal - expense - investment,
+  };
+}
+
+function resolveInflows(row) {
+  if (!row) {
     return [{ label: 'Salary', amount: 0, kind: 'salary' }];
   }
-  if (fallbackSalary > 0) {
-    return [{ label: 'Salary', amount: fallbackSalary, kind: 'salary' }];
+
+  const legacyAmount = Number(row.amount) || 0;
+  const storedInflows = Array.isArray(row.inflows) ? row.inflows : [];
+  const hasNonSalaryInflows = storedInflows.some(
+    (r) =>
+      r.kind === 'carryforward' ||
+      (r.kind !== 'salary' && Number(r.amount) > 0)
+  );
+
+  if (storedInflows.length > 0) {
+    const mapped = orderInflows(
+      storedInflows.map((r) => ({
+        label: r.label,
+        amount: r.amount || 0,
+        kind: normalizeKind(r.kind),
+      }))
+    );
+    const salaryRow = mapped.find((r) => r.kind === 'salary');
+    const salaryAmount = Number(salaryRow?.amount) || 0;
+    const inflowTotal = Cashflow.totalFromInflows(mapped);
+
+    // Legacy rows: amount holds salary while inflows array is empty or salary-only zero
+    if (legacyAmount > 0 && !hasNonSalaryInflows && (inflowTotal === 0 || salaryAmount === 0)) {
+      return [{ label: 'Salary', amount: legacyAmount, kind: 'salary' }];
+    }
+
+    return mapped;
+  }
+
+  if (legacyAmount > 0) {
+    return [{ label: 'Salary', amount: legacyAmount, kind: 'salary' }];
   }
   return [{ label: 'Salary', amount: 0, kind: 'salary' }];
+}
+
+function isFutureMonth(year, month) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  if (year > currentYear) return true;
+  if (year === currentYear && month > currentMonth) return true;
+  return false;
+}
+
+async function maybeMigrateLegacyCashflow(row, year, month) {
+  if (!row || isFutureMonth(year, month)) return row;
+
+  const legacyAmount = Number(row.amount) || 0;
+  if (legacyAmount <= 0) return row;
+
+  const storedInflows = Array.isArray(row.inflows) ? row.inflows : [];
+  const hasNonSalaryInflows = storedInflows.some(
+    (r) =>
+      r.kind === 'carryforward' ||
+      (r.kind !== 'salary' && Number(r.amount) > 0)
+  );
+  if (hasNonSalaryInflows) return row;
+
+  const resolved = resolveInflows(row);
+  const salaryAmount = Number(resolved.find((r) => r.kind === 'salary')?.amount) || 0;
+  if (salaryAmount > 0 && row.explicitInflow === true) return row;
+
+  const migrated = [{ label: 'Salary', amount: legacyAmount, kind: 'salary' }];
+  return Cashflow.findByIdAndUpdate(
+    row._id,
+    {
+      inflows: migrated,
+      amount: legacyAmount,
+      explicitInflow: true,
+    },
+    { new: true }
+  );
 }
 
 async function getLastKnownSalary(userId, excludeYear, excludeMonth) {
@@ -78,25 +207,36 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ message: 'Invalid year or month' });
     }
     const userId = new mongoose.Types.ObjectId(req.user.id);
-    const [row, defaultSalary, lastKnownSalary] = await Promise.all([
-      Cashflow.findOne({ userId, year: y, month: m }),
+    let row = await Cashflow.findOne({ userId, year: y, month: m });
+    row = await maybeMigrateLegacyCashflow(row, y, m);
+    const [defaultSalary, lastKnownSalary] = await Promise.all([
       getDefaultSalary(userId),
       getLastKnownSalary(userId, y, m),
     ]);
-    const fallbackSalary = defaultSalary || lastKnownSalary || 0;
-    const inflows = resolveInflows(row, fallbackSalary);
+    const inflows = resolveInflows(row);
     const hasSavedRecord = !!row;
-    const savedTotal = row
-      ? row.inflows?.length
-        ? Cashflow.totalFromInflows(row.inflows)
-        : Number(row.amount) || 0
-      : 0;
+    const savedTotal = row ? Cashflow.totalFromInflows(resolveInflows(row)) : 0;
+
+    const prevMonth = m === 1 ? 12 : m - 1;
+    const prevYear = m === 1 ? y - 1 : y;
+    const prevStats = await getMonthRemaining(userId, prevYear, prevMonth);
+    const availableCarryForward = Math.max(0, prevStats.remaining);
+    const carryForwardRow = inflows.find((r) => r.kind === 'carryforward');
+
     return res.json(
       formatCashflowResponse(y, m, inflows, {
         hasSavedRecord,
         savedTotal,
         lastKnownSalary,
         defaultMonthlySalary: defaultSalary,
+        carryForward: {
+          available: availableCarryForward,
+          prevYear,
+          prevMonth,
+          prevMonthLabel: MONTH_NAMES[prevMonth],
+          included: !!carryForwardRow,
+          amount: carryForwardRow ? carryForwardRow.amount : availableCarryForward,
+        },
       })
     );
   } catch (err) {
@@ -124,8 +264,9 @@ router.get('/year/breakdown', async (req, res) => {
     const sourceTotals = {};
 
     for (let m = 1; m <= 12; m += 1) {
-      const row = rowByMonth.get(m);
-      const inflows = row ? resolveInflows(row, 0) : [];
+      let row = rowByMonth.get(m);
+      row = row ? await maybeMigrateLegacyCashflow(row, y, m) : null;
+      const inflows = row ? resolveInflows(row) : [];
       const total = Cashflow.totalFromInflows(inflows);
       months.push({ month: m, inflows, total });
       inflows.forEach((inf) => {
@@ -160,15 +301,13 @@ router.get('/year', async (req, res) => {
     const userId = new mongoose.Types.ObjectId(req.user.id);
     const rows = await Cashflow.find({ userId, year: y });
     const byMonth = Array(12).fill(0);
-    rows.forEach((row) => {
+    for (const row of rows) {
       if (row.month >= 1 && row.month <= 12) {
-        const total =
-          row.inflows?.length > 0
-            ? Cashflow.totalFromInflows(row.inflows)
-            : row.amount || 0;
-        byMonth[row.month - 1] = total;
+        const migrated = await maybeMigrateLegacyCashflow(row, row.year, row.month);
+        const inflows = resolveInflows(migrated);
+        byMonth[row.month - 1] = Cashflow.totalFromInflows(inflows);
       }
-    });
+    }
     return res.json({ year: y, months: byMonth });
   } catch (err) {
     console.error('Get yearly cashflow error', err);
@@ -179,7 +318,7 @@ router.get('/year', async (req, res) => {
 // PUT /api/cashflow  { year, month, inflows } or legacy { year, month, amount }
 router.put('/', async (req, res) => {
   try {
-    const { year, month, inflows, amount } = req.body;
+    const { year, month, inflows, amount, explicitInflow } = req.body;
     if (year == null || month == null) {
       return res.status(400).json({ message: 'year and month are required' });
     }
@@ -207,11 +346,18 @@ router.put('/', async (req, res) => {
         .json({ message: 'inflows or amount is required' });
     }
 
-    const total = Cashflow.totalFromInflows(normalizedInflows);
+    const orderedInflows = orderInflows(normalizedInflows);
+    const total = Cashflow.totalFromInflows(orderedInflows);
     const userId = new mongoose.Types.ObjectId(req.user.id);
+    const updatePayload = {
+      inflows: orderedInflows,
+      amount: total,
+      explicitInflow: true,
+    };
+
     const updated = await Cashflow.findOneAndUpdate(
       { userId, year: y, month: m },
-      { inflows: normalizedInflows, amount: total },
+      updatePayload,
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
     const resolved = resolveInflows(updated);

@@ -1,277 +1,280 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAuth } from '../auth/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { api } from '../services/api';
 
-function inflowTotal(inflows) {
-  return (inflows || []).reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
-}
-
-function formatInflowAmount(value) {
-  if (value === '' || value == null) return '';
-  const num = Number(value);
-  return Number.isNaN(num) ? '' : String(num);
-}
-
-function resolveLoadedInflows(data, user) {
-  const rows = Array.isArray(data?.inflows) ? data.inflows : [];
-  const savedTotal = Number(data?.savedTotal ?? data?.total ?? data?.amount) || 0;
-  const lastKnown = Number(data?.lastKnownSalary) || 0;
-  const profileDefault = Number(user?.defaultMonthlySalary) || 0;
-  const suggested = Number(user?.suggestedDefaultSalary) || profileDefault || lastKnown;
-
-  if (inflowTotal(rows) > 0) {
-    return rows.map((row) => ({
-      ...row,
-      amount: formatInflowAmount(row.amount),
-    }));
+function resolveLoadedInflows(data) {
+  const fromApi = data?.inflows;
+  if (Array.isArray(fromApi) && fromApi.length > 0) {
+    const salary = fromApi.find((r) => r.kind === 'salary');
+    const carry = fromApi.find((r) => r.kind === 'carryforward');
+    const custom = fromApi.filter((r) => r.kind !== 'salary' && r.kind !== 'carryforward');
+    const rows = [
+      salary || { label: 'Salary', amount: 0, kind: 'salary' },
+      ...(carry ? [carry] : []),
+      ...custom,
+    ];
+    return rows;
   }
-  if (savedTotal > 0) {
-    return [{ label: 'Salary', amount: formatInflowAmount(savedTotal), kind: 'salary' }];
-  }
-  if (suggested > 0) {
-    return [{ label: 'Salary', amount: formatInflowAmount(suggested), kind: 'salary' }];
-  }
-  return [{ label: 'Salary', amount: '', kind: 'salary' }];
+  return [{ label: 'Salary', amount: 0, kind: 'salary' }];
 }
 
-function resolveDefaultSalaryDisplay(data, user, inflows) {
-  const profileDefault = Number(user?.defaultMonthlySalary) || 0;
-  if (profileDefault > 0) return String(profileDefault);
-
-  const savedTotal = Number(data?.savedTotal) || 0;
-  if (savedTotal > 0) return String(savedTotal);
-
-  const salaryRow = inflows.find((r) => r.kind === 'salary');
-  const salaryAmt = Number(salaryRow?.amount) || 0;
-  if (salaryAmt > 0) return String(salaryAmt);
-
-  const lastKnown = Number(data?.lastKnownSalary) || Number(user?.lastKnownSalary) || 0;
-  if (lastKnown > 0) return String(lastKnown);
-
-  return '';
+function orderInflowsForSave(rows) {
+  const salary = rows.find((r) => r.kind === 'salary') || {
+    label: 'Salary',
+    amount: 0,
+    kind: 'salary',
+  };
+  const carry = rows.find((r) => r.kind === 'carryforward');
+  const custom = rows.filter((r) => r.kind !== 'salary' && r.kind !== 'carryforward');
+  return [salary, ...(carry ? [carry] : []), ...custom];
 }
 
-function CashInflowSection({ year, month, onTotalChange, onSaved, onInflowsChange }) {
-  const { user, updateUser } = useAuth();
-  const [inflows, setInflows] = useState([{ label: 'Salary', amount: '', kind: 'salary' }]);
-  const [defaultSalary, setDefaultSalary] = useState('');
-  const [loading, setLoading] = useState(false);
+export default function CashInflowSection({ year, month, onTotalChange, onSaved }) {
+  const toast = useToast();
+  const [inflows, setInflows] = useState([{ label: 'Salary', amount: 0, kind: 'salary' }]);
+  const [carryForwardInfo, setCarryForwardInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
   const saveTimerRef = useRef(null);
-  const skipSaveRef = useRef(false);
+  const skipNextSaveRef = useRef(false);
   const userEditedRef = useRef(false);
+  const inflowsRef = useRef(inflows);
+  inflowsRef.current = inflows;
 
-  const total = inflowTotal(inflows);
+  const total = inflows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
 
-  useEffect(() => {
-    onTotalChange?.(total);
-    onInflowsChange?.(inflows);
-  }, [total, inflows, onTotalChange, onInflowsChange]);
-
-  const persistInflows = useCallback(
-    async (nextInflows) => {
-      try {
-        const payload = nextInflows.map((row) => ({
-          label: row.label,
-          amount: row.amount === '' ? 0 : Number(row.amount) || 0,
-          kind: row.kind,
-        }));
-        await api.put('/cashflow', { year, month, inflows: payload });
-        onSaved?.();
-      } catch (err) {
-        console.error('Failed to save cash inflows', err);
-      }
-    },
-    [year, month, onSaved]
-  );
-
-  const scheduleSave = useCallback(
-    (nextInflows) => {
-      if (!userEditedRef.current || skipSaveRef.current) return;
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        persistInflows(nextInflows);
-      }, 400);
-    },
-    [persistInflows]
-  );
-
-  const loadInflows = useCallback(async () => {
+  const load = useCallback(async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
     setLoading(true);
-    skipSaveRef.current = true;
-    userEditedRef.current = false;
     try {
-      let profileUser = user;
-      if (!user?.defaultMonthlySalary && !user?.suggestedDefaultSalary) {
-        try {
-          const meRes = await api.get('/auth/me');
-          if (meRes.data?.user) {
-            profileUser = { ...user, ...meRes.data.user };
-            updateUser?.(meRes.data.user);
-          }
-        } catch (_) {
-          /* profile fetch optional */
-        }
-      }
-
-      const res = await api.get('/cashflow', { params: { year, month } });
-      const nextInflows = resolveLoadedInflows(res.data, profileUser);
-      setInflows(nextInflows);
-      setDefaultSalary(resolveDefaultSalaryDisplay(res.data, profileUser, nextInflows));
-    } catch (err) {
-      console.error('Failed to load cash inflows', err);
-      const fallback =
-        user?.defaultMonthlySalary || user?.suggestedDefaultSalary || user?.lastKnownSalary;
-      setInflows([
-        {
-          label: 'Salary',
-          amount: fallback ? String(fallback) : '',
-          kind: 'salary',
-        },
-      ]);
-      setDefaultSalary(fallback ? String(fallback) : '');
+      const res = await api.get('/cashflow', {
+        params: { year, month },
+        headers: { 'Cache-Control': 'no-cache' },
+      });
+      const data = res.data;
+      skipNextSaveRef.current = true;
+      userEditedRef.current = false;
+      setInflows(resolveLoadedInflows(data));
+      setCarryForwardInfo(data.carryForward || null);
+      onTotalChange?.(data.total ?? 0);
+    } catch {
+      skipNextSaveRef.current = true;
+      userEditedRef.current = false;
+      setInflows([{ label: 'Salary', amount: 0, kind: 'salary' }]);
+      setCarryForwardInfo(null);
+      onTotalChange?.(0);
     } finally {
       setLoading(false);
-      setTimeout(() => {
-        skipSaveRef.current = false;
-      }, 0);
     }
-  }, [year, month, user, updateUser]);
+  }, [year, month, onTotalChange]);
 
   useEffect(() => {
-    loadInflows();
+    load();
+  }, [load]);
+
+  const persist = useCallback(
+    async (rows, targetYear, targetMonth) => {
+      const ordered = orderInflowsForSave(rows);
+      setSaving(true);
+      try {
+        const res = await api.put('/cashflow', {
+          year: Number(targetYear),
+          month: Number(targetMonth),
+          inflows: ordered,
+          explicitInflow: true,
+        });
+        const totalSaved = res.data.total ?? 0;
+        skipNextSaveRef.current = true;
+        setInflows(resolveLoadedInflows(res.data));
+        onTotalChange?.(totalSaved);
+        onSaved?.(totalSaved);
+        setSavedAt(new Date());
+        return true;
+      } catch {
+        toast.error('Could not save cash inflow');
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [onTotalChange, onSaved, toast]
+  );
+
+  const yearRef = useRef(year);
+  const monthRef = useRef(month);
+  yearRef.current = year;
+  monthRef.current = month;
+
+  useEffect(() => {
+    if (loading) return;
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+    if (!userEditedRef.current) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      persist(inflowsRef.current, yearRef.current, monthRef.current);
+    }, 600);
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [loadInflows]);
+  }, [inflows, loading, persist]);
 
-  const updateInflows = (updater) => {
+  const markEdited = () => {
     userEditedRef.current = true;
+  };
+
+  const updateRow = (index, patch) => {
+    markEdited();
+    setInflows((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  };
+
+  const addCustomRow = () => {
+    markEdited();
+    setInflows((prev) => [...prev, { label: '', amount: 0, kind: 'custom' }]);
+  };
+
+  const removeRow = (index) => {
+    markEdited();
+    setInflows((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const toggleCarryForward = (include) => {
+    if (!carryForwardInfo?.available) return;
+    markEdited();
+    const label = `Carried from ${carryForwardInfo.prevMonthLabel}`;
+    const amount = carryForwardInfo.available;
+
     setInflows((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      if (!skipSaveRef.current) scheduleSave(next);
-      return next;
+      const without = prev.filter((r) => r.kind !== 'carryforward');
+      if (!include) return without;
+      const salary = without.find((r) => r.kind === 'salary') || {
+        label: 'Salary',
+        amount: 0,
+        kind: 'salary',
+      };
+      const custom = without.filter((r) => r.kind !== 'salary');
+      return [salary, { label, amount, kind: 'carryforward' }, ...custom];
     });
+    setCarryForwardInfo((prev) => (prev ? { ...prev, included: include } : prev));
   };
 
-  const handleAmountChange = (idx, value) => {
-    updateInflows((prev) =>
-      prev.map((row, i) => (i === idx ? { ...row, amount: value } : row))
+  const carryForwardIncluded = inflows.some((r) => r.kind === 'carryforward');
+  const canOfferCarryForward =
+    carryForwardInfo?.available > 0 || carryForwardIncluded;
+
+  if (loading) {
+    return (
+      <section className="card cash-inflow-section">
+        <h2>Cash inflow</h2>
+        <p className="muted cash-inflow-hint">Loading…</p>
+      </section>
     );
-  };
-
-  const handleLabelChange = (idx, value) => {
-    updateInflows((prev) =>
-      prev.map((row, i) => (i === idx ? { ...row, label: value } : row))
-    );
-  };
-
-  const addCustomInflow = () => {
-    updateInflows((prev) => [
-      ...prev,
-      { label: '', amount: '', kind: 'custom' },
-    ]);
-  };
-
-  const removeInflow = (idx) => {
-    updateInflows((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const handleDefaultSalaryBlur = async () => {
-    const num = defaultSalary === '' ? 0 : Number(defaultSalary) || 0;
-    if (num === (user?.defaultMonthlySalary || 0)) return;
-    try {
-      const res = await api.patch('/auth/me', { defaultMonthlySalary: num });
-      updateUser?.(res.data.user);
-    } catch (err) {
-      console.error('Failed to save default salary', err);
-    }
-  };
-
-  const applyDefaultSalary = () => {
-    const num = defaultSalary === '' ? 0 : Number(defaultSalary) || 0;
-    updateInflows((prev) =>
-      prev.map((row) =>
-        row.kind === 'salary' ? { ...row, amount: num ? String(num) : '' } : row
-      )
-    );
-  };
+  }
 
   return (
-    <div className="cash-inflow-section">
-      <p className="muted small cash-inflow-hint">
-        Cash inflow — add salary and other income (FD interest, refund, etc.); total inflow is used for remaining balance
-      </p>
+    <section className="card cash-inflow-section">
+      <h2>Cash inflow</h2>
 
-      <div className="default-salary-bar">
-        <label className="default-salary-label">
-          <span>Default monthly salary</span>
+      {canOfferCarryForward && (
+        <label className="carry-forward-option">
           <input
-            type="number"
-            className="cashflow-input default-salary-input"
-            placeholder="Enter salary"
-            min="0"
-            step="1"
-            value={defaultSalary}
-            onChange={(e) => setDefaultSalary(e.target.value)}
-            onBlur={handleDefaultSalaryBlur}
+            type="checkbox"
+            checked={carryForwardIncluded}
+            onChange={(e) => toggleCarryForward(e.target.checked)}
+            disabled={!carryForwardInfo?.available && !carryForwardIncluded}
           />
+          <span>
+            {carryForwardIncluded ? (
+              <>
+                Include carry forward from {carryForwardInfo?.prevMonthLabel}
+                {carryForwardInfo?.available > 0 && (
+                  <span className="carry-forward-amount">
+                    {' '}
+                    (₹{Number(carryForwardInfo.available).toLocaleString('en-IN')} available)
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                Carry forward leftover from {carryForwardInfo?.prevMonthLabel}
+                <span className="carry-forward-amount">
+                  {' '}
+                  — ₹{Number(carryForwardInfo.available).toLocaleString('en-IN')}
+                </span>
+              </>
+            )}
+          </span>
         </label>
-        <button type="button" className="ghost-btn small" onClick={applyDefaultSalary}>
-          Apply to this month
-        </button>
-      </div>
+      )}
 
       <div className="inflow-list">
-        {loading && <p className="muted small">Loading inflows…</p>}
-        {!loading &&
-          inflows.map((row, idx) => (
-            <div key={idx} className="inflow-row">
-              {row.kind === 'salary' ? (
+        {inflows.map((row, index) => {
+          const isSalary = row.kind === 'salary';
+          const isCarryForward = row.kind === 'carryforward';
+
+          return (
+            <div
+              key={`${row.kind}-${index}`}
+              className={`inflow-row${isCarryForward ? ' inflow-row-carryforward' : ''}`}
+            >
+              {isSalary ? (
                 <span className="inflow-label-fixed">Salary</span>
+              ) : isCarryForward ? (
+                <span className="inflow-label-fixed inflow-label-carryforward">{row.label}</span>
               ) : (
                 <input
                   type="text"
                   className="inflow-label-input"
-                  placeholder="e.g. FD interest, refund"
+                  placeholder="Source (e.g. Bonus, Freelance)"
                   value={row.label}
-                  onChange={(e) => handleLabelChange(idx, e.target.value)}
+                  onChange={(e) => updateRow(index, { label: e.target.value })}
                 />
               )}
               <input
                 type="number"
-                className="cashflow-input inflow-amount-input"
-                placeholder="Enter amount"
                 min="0"
-                step="1"
-                value={row.amount ?? ''}
-                onChange={(e) => handleAmountChange(idx, e.target.value)}
+                step="0.01"
+                className="cashflow-input inflow-amount-input"
+                value={row.amount === 0 ? '' : row.amount}
+                onChange={(e) =>
+                  updateRow(index, { amount: e.target.value === '' ? 0 : Number(e.target.value) })
+                }
+                placeholder="0"
               />
-              {row.kind !== 'salary' && (
+              {!isSalary && !isCarryForward && (
                 <button
                   type="button"
-                  className="ghost-btn small inflow-remove-btn"
-                  onClick={() => removeInflow(idx)}
-                  title="Remove inflow"
+                  className="link-btn danger small inflow-remove-btn"
+                  onClick={() => removeRow(index)}
+                  aria-label="Remove inflow"
                 >
                   ×
                 </button>
               )}
             </div>
-          ))}
+          );
+        })}
       </div>
 
       <div className="inflow-actions">
-        <button type="button" className="ghost-btn small" onClick={addCustomInflow}>
+        <button type="button" className="ghost-btn small inflow-add-btn" onClick={addCustomRow}>
           + Add inflow
         </button>
         <div className="inflow-total">
-          <span className="kpi-label">Total cash inflow</span>
-          <span className="kpi-value">₹{total.toLocaleString('en-IN')}</span>
+          <span className="inflow-total-label">Total inflow</span>
+          <strong className="inflow-total-value">₹{total.toLocaleString('en-IN')}</strong>
+          {saving && <span className="inflow-save-status muted">Saving…</span>}
+          {!saving && savedAt && (
+            <span className="inflow-save-status muted">Saved</span>
+          )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }
-
-export default CashInflowSection;
-export { inflowTotal };

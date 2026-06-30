@@ -4,7 +4,7 @@ const inflowSchema = new mongoose.Schema(
   {
     label: { type: String, required: true, trim: true },
     amount: { type: Number, required: true, min: 0, default: 0 },
-    kind: { type: String, enum: ['salary', 'custom'], default: 'custom' },
+    kind: { type: String, enum: ['salary', 'custom', 'carryforward'], default: 'custom' },
   },
   { _id: false }
 );
@@ -37,6 +37,10 @@ const cashflowSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 0,
+    },
+    explicitInflow: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }
