@@ -2327,6 +2327,24 @@
 .legend-remain { background: #6366f1; }
 .legend-over { background: #ef4444; }
 
+.kpi-value.inflow,
+.kpi-with-pct.inflow .kpi-value {
+  color: var(--accent, #818cf8);
+}
+
+[data-theme="light"] .kpi-value.inflow,
+[data-theme="light"] .kpi-with-pct.inflow .kpi-value {
+  color: #4338ca;
+}
+
+.sticky-stat-in strong {
+  color: var(--accent, #818cf8);
+}
+
+[data-theme="light"] .sticky-stat-in strong {
+  color: #4338ca;
+}
+
 .kpi-value.invest,
 .kpi-with-pct.invest .kpi-value {
   color: var(--success, #22c55e);

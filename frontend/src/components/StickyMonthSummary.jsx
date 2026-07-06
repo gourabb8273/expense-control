@@ -31,7 +31,7 @@ export default function StickyMonthSummary({
           <span className="muted small">Loading…</span>
         ) : (
           <>
-            <span className="sticky-stat" title="Cash inflow">
+            <span className="sticky-stat sticky-stat-in" title="Cash inflow">
               In <strong>₹{Number(inflow || 0).toLocaleString('en-IN')}</strong>
             </span>
             <span className="sticky-stat sticky-stat-exp" title="Expenses">
@@ -41,9 +41,6 @@ export default function StickyMonthSummary({
             <span className="sticky-stat sticky-stat-inv" title="Investments">
               Inv <strong>₹{Number(investment || 0).toLocaleString('en-IN')}</strong>
               {investPct != null && <em>{investPct}%</em>}
-            </span>
-            <span className="sticky-stat sticky-stat-out" title="Total outflow">
-              Out <strong>₹{Number(outflow || 0).toLocaleString('en-IN')}</strong>
             </span>
             <span
               className={`sticky-stat sticky-stat-rem ${remaining >= 0 ? 'positive' : 'negative'}`}
@@ -58,6 +55,9 @@ export default function StickyMonthSummary({
                   {netWorthChange >= 0 ? '+' : '-'}₹{Math.abs(netWorthChange).toLocaleString('en-IN')}
                 </em>
               )}
+            </span>
+            <span className="sticky-stat sticky-stat-out" title="Total outflow (expense + investment)">
+              Total <strong>₹{Number(outflow || 0).toLocaleString('en-IN')}</strong>
             </span>
           </>
         )}

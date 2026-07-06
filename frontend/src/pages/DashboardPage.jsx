@@ -665,9 +665,14 @@ function DashboardPage() {
                 />
                 <div className="monthly-kpis monthly-cashflow-grid monthly-cashflow-summary">
                   {loading ? (
-                    <KpiSkeletonGrid count={5} />
+                    <KpiSkeletonGrid count={6} />
                   ) : (
                     <>
+                  <KpiWithPct
+                    label="Inflow"
+                    amount={cashflowAmount}
+                    className="inflow"
+                  />
                   <KpiWithPct
                     label="Expense"
                     amount={expenseAmount}
@@ -680,15 +685,6 @@ function DashboardPage() {
                     pctOfInflow={pctOfInflow(investmentAmount, cashflowAmount)}
                     className="invest"
                   />
-                  <div className="kpi kpi-with-pct outflow">
-                    <span className="kpi-label">Total outflow</span>
-                    <span className="kpi-value outflow">₹{totalForMonth.toLocaleString('en-IN')}</span>
-                    {cashflowAmount > 0 && (
-                      <span className="kpi-pct muted small">
-                        {pctOfInflow(totalForMonth, cashflowAmount)}% of inflow
-                      </span>
-                    )}
-                  </div>
                   <KpiWithPct
                     label="Remaining"
                     amount={remainingBalance}
@@ -703,6 +699,15 @@ function DashboardPage() {
                     {netWorthChange != null && (
                       <span className={`kpi-pct ${netWorthChange >= 0 ? 'positive' : 'negative'}`}>
                         {netWorthChange >= 0 ? '+' : '-'}₹{Math.abs(netWorthChange).toLocaleString('en-IN')} vs last month
+                      </span>
+                    )}
+                  </div>
+                  <div className="kpi kpi-with-pct outflow">
+                    <span className="kpi-label">Total outflow</span>
+                    <span className="kpi-value outflow">₹{totalForMonth.toLocaleString('en-IN')}</span>
+                    {cashflowAmount > 0 && (
+                      <span className="kpi-pct muted small">
+                        {pctOfInflow(totalForMonth, cashflowAmount)}% of inflow
                       </span>
                     )}
                   </div>
