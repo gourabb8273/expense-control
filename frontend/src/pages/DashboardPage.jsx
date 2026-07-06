@@ -22,10 +22,14 @@ import { useToast } from '../context/ToastContext';
 import { ChartsExpandProvider, waitForChartRender } from '../context/ChartsExpandContext';
 import ChartsExpandToggle from '../components/ChartsExpandToggle';
 
-function netWorthFromSheet(data) {
-  const a = (data?.assets || []).reduce((s, i) => s + (Number(i.value) || 0), 0);
-  const d = (data?.debts || []).reduce((s, i) => s + (Number(i.value) || 0), 0);
-  return a - d;
+function balanceSheetTotalsFromSheet(data) {
+  const totalAssets = (data?.assets || []).reduce((s, i) => s + (Number(i.value) || 0), 0);
+  const totalDebts = (data?.debts || []).reduce((s, i) => s + (Number(i.value) || 0), 0);
+  return {
+    totalAssets,
+    totalDebts,
+    netWorth: totalAssets - totalDebts,
+  };
 }
 
 function pctOfInflow(part, inflow) {
@@ -83,9 +87,11 @@ function DashboardPage() {
     saved: false,
     carried: false,
     savedAt: null,
+    totalAssets: 0,
+    totalDebts: 0,
     netWorth: 0,
   });
-  const [prevMonthNetWorth, setPrevMonthNetWorth] = useState(null);
+  const [prevMonthBalance, setPrevMonthBalance] = useState(null);
   const [pendingRecurringCount, setPendingRecurringCount] = useState(0);
   const [chartsExpandAll, setChartsExpandAll] = useState(false);
   const [expandAllGeneration, setExpandAllGeneration] = useState(0);
@@ -207,10 +213,10 @@ function DashboardPage() {
     api
       .get('/balance-sheet', { params: { year: prevYear, month: prevMonthNum } })
       .then((res) => {
-        if (!cancelled) setPrevMonthNetWorth(netWorthFromSheet(res.data));
+        if (!cancelled) setPrevMonthBalance(balanceSheetTotalsFromSheet(res.data));
       })
       .catch(() => {
-        if (!cancelled) setPrevMonthNetWorth(null);
+        if (!cancelled) setPrevMonthBalance(null);
       });
     return () => {
       cancelled = true;
@@ -498,7 +504,11 @@ function DashboardPage() {
   );
 
   const netWorthChange =
-    prevMonthNetWorth != null ? balanceSheetMeta.netWorth - prevMonthNetWorth : null;
+    prevMonthBalance != null ? balanceSheetMeta.netWorth - prevMonthBalance.netWorth : null;
+  const totalAssetsChange =
+    prevMonthBalance != null ? balanceSheetMeta.totalAssets - prevMonthBalance.totalAssets : null;
+  const totalDebtsChange =
+    prevMonthBalance != null ? balanceSheetMeta.totalDebts - prevMonthBalance.totalDebts : null;
 
   const monthAlerts = useMemo(
     () =>
@@ -653,6 +663,10 @@ function DashboardPage() {
                 remaining={remainingBalance}
                 netWorth={balanceSheetMeta.netWorth}
                 netWorthChange={netWorthChange}
+                totalAssets={balanceSheetMeta.totalAssets}
+                totalAssetsChange={totalAssetsChange}
+                totalDebts={balanceSheetMeta.totalDebts}
+                totalDebtsChange={totalDebtsChange}
                 loading={loading}
               />
               <div className="monthly-cashflow">

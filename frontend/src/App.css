@@ -2466,9 +2466,15 @@
 .sticky-stat-exp strong { color: #ef4444; }
 .sticky-stat-out strong { color: #ef4444; }
 .sticky-stat-nw strong { color: #c4b5fd; }
+.sticky-stat-assets strong { color: #86efac; }
+.sticky-stat-debts strong { color: #fca5a5; }
 
-.sticky-stat-nw em.positive { color: #86efac; }
-.sticky-stat-nw em.negative { color: #fca5a5; }
+.sticky-stat-nw em.positive,
+.sticky-stat-assets em.positive { color: #86efac; }
+.sticky-stat-nw em.negative,
+.sticky-stat-assets em.negative { color: #fca5a5; }
+.sticky-stat-debts em.positive { color: #86efac; }
+.sticky-stat-debts em.negative { color: #fca5a5; }
 
 .sticky-stat-rem.positive strong { color: #86efac; }
 .sticky-stat-rem.negative strong { color: #fca5a5; }

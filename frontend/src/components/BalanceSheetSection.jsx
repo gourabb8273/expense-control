@@ -201,9 +201,11 @@ function BalanceSheetSection({ year, month, onSaved, onMetaChange, tagsRefreshKe
       saved,
       carried: !!carriedFrom,
       savedAt,
+      totalAssets,
+      totalDebts,
       netWorth,
     });
-  }, [netWorth, saved, carriedFrom, savedAt, onMetaChange]);
+  }, [totalAssets, totalDebts, netWorth, saved, carriedFrom, savedAt, onMetaChange]);
 
   const assetsWithValue = assets.filter((a) => (a.name || '').trim() && (Number(a.value) || 0) > 0);
   const debtsWithValue = debts.filter((d) => (d.name || '').trim() && (Number(d.value) || 0) > 0);
