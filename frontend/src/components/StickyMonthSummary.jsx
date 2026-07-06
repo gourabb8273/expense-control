@@ -27,7 +27,6 @@ export default function StickyMonthSummary({
   inflow,
   expense,
   investment,
-  remaining,
   netWorth = 0,
   netWorthChange = null,
   totalAssets = 0,
@@ -37,7 +36,6 @@ export default function StickyMonthSummary({
   loading,
 }) {
   const monthLabel = MONTH_NAMES[month] || month;
-  const outflow = expense + investment;
   const investPct = pct(investment, inflow);
   const expensePct = pct(expense, inflow);
 
@@ -54,19 +52,13 @@ export default function StickyMonthSummary({
             <span className="sticky-stat sticky-stat-in" title="Cash inflow">
               In <strong>₹{Number(inflow || 0).toLocaleString('en-IN')}</strong>
             </span>
-            <span className="sticky-stat sticky-stat-exp" title="Expenses">
-              Exp <strong>₹{Number(expense || 0).toLocaleString('en-IN')}</strong>
-              {expensePct != null && <em>{expensePct}%</em>}
-            </span>
             <span className="sticky-stat sticky-stat-inv" title="Investments">
               Inv <strong>₹{Number(investment || 0).toLocaleString('en-IN')}</strong>
               {investPct != null && <em>{investPct}%</em>}
             </span>
-            <span
-              className={`sticky-stat sticky-stat-rem ${remaining >= 0 ? 'positive' : 'negative'}`}
-              title="Remaining after invest + expense"
-            >
-              Left <strong>₹{Number(remaining || 0).toLocaleString('en-IN')}</strong>
+            <span className="sticky-stat sticky-stat-exp" title="Expenses">
+              Exp <strong>₹{Number(expense || 0).toLocaleString('en-IN')}</strong>
+              {expensePct != null && <em>{expensePct}%</em>}
             </span>
             <span className="sticky-stat sticky-stat-nw" title="Net worth (assets − debts)">
               NW <strong>₹{Number(netWorth || 0).toLocaleString('en-IN')}</strong>
@@ -79,9 +71,6 @@ export default function StickyMonthSummary({
             <span className="sticky-stat sticky-stat-debts" title="Total debts">
               Debts <strong>₹{Number(totalDebts || 0).toLocaleString('en-IN')}</strong>
               <ChangeDelta change={totalDebtsChange} kind="debts" />
-            </span>
-            <span className="sticky-stat sticky-stat-out" title="Total outflow (expense + investment)">
-              Total <strong>₹{Number(outflow || 0).toLocaleString('en-IN')}</strong>
             </span>
           </>
         )}

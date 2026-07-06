@@ -660,7 +660,6 @@ function DashboardPage() {
                 inflow={cashflowAmount}
                 expense={expenseAmount}
                 investment={investmentAmount}
-                remaining={remainingBalance}
                 netWorth={balanceSheetMeta.netWorth}
                 netWorthChange={netWorthChange}
                 totalAssets={balanceSheetMeta.totalAssets}
