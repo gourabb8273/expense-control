@@ -1,16 +1,20 @@
 import { useMemo } from 'react';
-import { Pie } from 'react-chartjs-2';
+import { Doughnut, Pie } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { formatSharePct } from '../utils/formatSharePct';
+import { itemColor, groupColor } from '../utils/investmentPlanColors';
 
-const GROUP_COLORS = ['#22c55e', '#3b82f6', '#f97316', '#a855f7', '#ec4899', '#eab308', '#0ea5e9', '#14b8a6'];
-
-function groupColor(index) {
-  return GROUP_COLORS[index % GROUP_COLORS.length];
-}
+ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
 
 function lineOpacity(index, total) {
   if (total <= 1) return 1;
-  return Math.max(0.45, 1 - index * (0.45 / (total - 1)));
+  return Math.max(0.5, 1 - index * (0.35 / (total - 1)));
 }
 
 function hexToRgba(hex, alpha) {
@@ -38,13 +42,75 @@ function buildGroups(itemsWithAmount) {
     .sort((a, b) => b.total - a.total);
 }
 
-const pieOptions = {
+function buildSortedItems(itemsWithAmount, groups) {
+  const tagColor = new Map(groups.map((g) => [g.tag, g.color]));
+  return [...itemsWithAmount]
+    .sort((a, b) => (Number(b.amount) || 0) - (Number(a.amount) || 0))
+    .map((item, index) => {
+      const tag = (item.tag || '').trim() || 'Other';
+      return {
+        ...item,
+        tag,
+        color: itemColor(index),
+        groupColor: tagColor.get(tag) || groupColor(0),
+      };
+    });
+}
+
+const doughnutOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '64%',
+  plugins: {
+    legend: { display: false },
+    datalabels: {
+      display: (ctx) => {
+        const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
+        const v = ctx.raw || 0;
+        if (!total || !v) return false;
+        return (v / total) * 100 >= 4.5;
+      },
+      color: '#f8fafc',
+      font: { size: 10, weight: '700' },
+      formatter: (v, ctx) => {
+        const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
+        return `${formatSharePct(v, total)}%`;
+      },
+    },
+    tooltip: {
+      backgroundColor: 'rgba(15, 23, 42, 0.94)',
+      borderColor: 'rgba(148, 163, 184, 0.2)',
+      borderWidth: 1,
+      padding: 10,
+      callbacks: {
+        title: (items) => items[0]?.label || '',
+        label: (ctx) => {
+          const v = ctx.raw || 0;
+          const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
+          const pct = formatSharePct(v, total);
+          const tag = ctx.dataset.tags?.[ctx.dataIndex] || '';
+          const platform = ctx.dataset.platforms?.[ctx.dataIndex] || '';
+          const lines = [`₹${Number(v).toLocaleString('en-IN')} · ${pct}% of plan`];
+          if (tag) lines.push(`Group: ${tag}`);
+          if (platform) lines.push(`Platform: ${platform}`);
+          return lines;
+        },
+      },
+    },
+  },
+};
+
+const groupPieOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
     legend: { display: false },
     datalabels: { display: false },
     tooltip: {
+      backgroundColor: 'rgba(15, 23, 42, 0.94)',
+      borderColor: 'rgba(148, 163, 184, 0.2)',
+      borderWidth: 1,
+      padding: 10,
       callbacks: {
         label: (ctx) => {
           const v = ctx.raw || 0;
@@ -58,10 +124,11 @@ const pieOptions = {
 };
 
 const miniPieOptions = {
-  ...pieOptions,
+  ...groupPieOptions,
   plugins: {
-    ...pieOptions.plugins,
+    ...groupPieOptions.plugins,
     tooltip: {
+      ...groupPieOptions.plugins.tooltip,
       callbacks: {
         label: (ctx) => {
           const v = ctx.raw || 0;
@@ -74,38 +141,6 @@ const miniPieOptions = {
     },
   },
 };
-
-function NestedStackBar({ groups, totalPlanned }) {
-  return (
-    <div
-      className="investment-plan-viz-bar investment-plan-viz-bar-nested"
-      role="img"
-      aria-label={`Plan split across ${groups.length} groups and individual allocations`}
-    >
-      {groups.map((g) => (
-        <div
-          key={g.tag}
-          className="investment-plan-viz-bar-group"
-          style={{ width: `${(g.total / totalPlanned) * 100}%` }}
-          title={`${g.tag}: ₹${g.total.toLocaleString('en-IN')} (${formatSharePct(g.total, totalPlanned)}%)`}
-        >
-          {g.lines.map((line, i) => (
-            <div
-              key={`${g.tag}-${line.name}`}
-              className="investment-plan-viz-bar-seg investment-plan-viz-bar-subseg"
-              style={{
-                width: `${((Number(line.amount) || 0) / g.total) * 100}%`,
-                backgroundColor: g.color,
-                opacity: lineOpacity(i, g.lines.length),
-              }}
-              title={`${line.name}: ₹${(Number(line.amount) || 0).toLocaleString('en-IN')} (${formatSharePct(line.amount, g.total)}% of ${g.tag})`}
-            />
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function GroupMiniBar({ group }) {
   return (
@@ -123,7 +158,6 @@ function GroupMiniBar({ group }) {
             backgroundColor: group.color,
             opacity: lineOpacity(i, group.lines.length),
           }}
-          title={`${line.name}: ${formatSharePct(line.amount, group.total)}% of ${group.tag}`}
         />
       ))}
     </div>
@@ -135,8 +169,11 @@ function GroupDetailChart({ group, totalPlanned }) {
     labels: group.lines.map((l) => l.name),
     datasets: [{
       data: group.lines.map((l) => Number(l.amount) || 0),
-      backgroundColor: group.lines.map((_, i) => hexToRgba(group.color, lineOpacity(i, group.lines.length))),
-      borderWidth: 0,
+      backgroundColor: group.lines.map((_, i) =>
+        hexToRgba(group.color, lineOpacity(i, group.lines.length))
+      ),
+      borderColor: 'rgba(15, 23, 42, 0.45)',
+      borderWidth: 1,
     }],
   };
 
@@ -182,23 +219,86 @@ function GroupDetailChart({ group, totalPlanned }) {
   );
 }
 
+function GroupStrip({ groups, totalPlanned }) {
+  return (
+    <div className="investment-plan-viz-strip">
+      <div
+        className="investment-plan-viz-bar investment-plan-viz-bar-nested"
+        role="img"
+        aria-label={`Plan split across ${groups.length} groups`}
+      >
+        {groups.map((g) => (
+          <div
+            key={g.tag}
+            className="investment-plan-viz-bar-group"
+            style={{ width: `${(g.total / totalPlanned) * 100}%` }}
+            title={`${g.tag}: ₹${g.total.toLocaleString('en-IN')}`}
+          >
+            {g.lines.map((line, i) => (
+              <div
+                key={`${g.tag}-${line.name}`}
+                className="investment-plan-viz-bar-seg investment-plan-viz-bar-subseg"
+                style={{
+                  width: `${((Number(line.amount) || 0) / g.total) * 100}%`,
+                  backgroundColor: g.color,
+                  opacity: lineOpacity(i, g.lines.length),
+                }}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="investment-plan-viz-group-pills">
+        {groups.map((g) => (
+          <span key={g.tag} className="investment-plan-viz-group-pill" style={{ '--pill-color': g.color }}>
+            <i aria-hidden="true" />
+            {g.tag}
+            <em>{formatSharePct(g.total, totalPlanned)}%</em>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function InvestmentPlanVisualization({ itemsWithAmount, notes, totalPlanned }) {
   const groups = useMemo(() => buildGroups(itemsWithAmount), [itemsWithAmount]);
+  const sortedItems = useMemo(
+    () => buildSortedItems(itemsWithAmount, groups),
+    [itemsWithAmount, groups]
+  );
 
   if (!itemsWithAmount.length || totalPlanned <= 0) return null;
 
-  const pieData = {
+  const itemChartData = {
+    labels: sortedItems.map((i) => i.name),
+    datasets: [{
+      data: sortedItems.map((i) => Number(i.amount) || 0),
+      backgroundColor: sortedItems.map((i) => i.color),
+      borderColor: 'rgba(15, 23, 42, 0.55)',
+      borderWidth: 2,
+      hoverBorderColor: 'rgba(248, 250, 252, 0.85)',
+      hoverBorderWidth: 2,
+      hoverOffset: 6,
+      tags: sortedItems.map((i) => i.tag),
+      platforms: sortedItems.map((i) => (i.platform || '').trim()),
+    }],
+  };
+
+  const groupPieData = {
     labels: groups.map((g) => g.tag),
     datasets: [{
       data: groups.map((g) => g.total),
       backgroundColor: groups.map((g) => g.color),
-      borderWidth: 0,
+      borderColor: 'rgba(15, 23, 42, 0.45)',
+      borderWidth: 2,
+      hoverOffset: 4,
     }],
   };
 
   return (
     <div className="investment-plan-viz">
-      <div className="investment-plan-viz-hero">
+      <header className="investment-plan-viz-hero">
         <div className="investment-plan-viz-total">
           <span className="investment-plan-viz-total-label">Portfolio plan</span>
           <strong className="investment-plan-viz-total-amt">
@@ -211,68 +311,55 @@ export default function InvestmentPlanVisualization({ itemsWithAmount, notes, to
         {notes?.trim() && (
           <p className="investment-plan-viz-notes">{notes.trim()}</p>
         )}
-      </div>
+      </header>
 
-      <div className="investment-plan-viz-bar-wrap">
-        <p className="investment-plan-viz-bar-caption">
-          Full split — groups with fund-level detail inside each segment
-        </p>
-        <NestedStackBar groups={groups} totalPlanned={totalPlanned} />
-        <ul className="investment-plan-viz-bar-legend">
-          {groups.map((g) => (
-            <li key={g.tag}>
-              <i className="investment-plan-viz-swatch" style={{ backgroundColor: g.color }} aria-hidden="true" />
-              <span>{g.tag}</span>
-              <strong>₹{g.total.toLocaleString('en-IN')}</strong>
-              <em>{formatSharePct(g.total, totalPlanned)}%</em>
-              {g.lines.length > 1 && (
-                <span className="investment-plan-viz-legend-sub">{g.lines.length} funds</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
+      <GroupStrip groups={groups} totalPlanned={totalPlanned} />
 
-      <div className="investment-plan-viz-body">
-        <div className="investment-plan-viz-groups">
-          {groups.map((g) => (
-            <section key={g.tag} className="investment-plan-viz-group" style={{ '--group-color': g.color }}>
-              <header className="investment-plan-viz-group-head">
-                <span className="investment-plan-viz-group-tag">{g.tag}</span>
-                <span className="investment-plan-viz-group-amt">
-                  ₹{g.total.toLocaleString('en-IN')}
-                  <em>{formatSharePct(g.total, totalPlanned)}% of plan</em>
-                </span>
-              </header>
-              {g.lines.length > 1 && <GroupMiniBar group={g} />}
-              <ul className="investment-plan-viz-group-lines">
-                {g.lines.map((line) => (
-                  <li key={`${line.name}-${line.platform || ''}`}>
-                    <span className="investment-plan-viz-line-name">{line.name}</span>
-                    {(line.platform || '').trim() ? (
-                      <span className="investment-plan-viz-line-platform">
-                        {(line.platform || '').trim()}
-                      </span>
-                    ) : (
-                      <span className="investment-plan-viz-line-platform investment-plan-viz-line-platform-empty" aria-hidden="true" />
+      <section className="investment-plan-viz-primary">
+        <h3 className="investment-plan-viz-section-title">All allocations</h3>
+        <div className="investment-plan-viz-item-chart">
+          <div className="investment-plan-viz-donut-wrap">
+            <div className="investment-plan-viz-donut-canvas">
+              <Doughnut data={itemChartData} options={doughnutOptions} />
+            </div>
+            <div className="investment-plan-viz-donut-center" aria-hidden="true">
+              <span>Total</span>
+              <strong>₹{totalPlanned.toLocaleString('en-IN')}</strong>
+            </div>
+          </div>
+          <ul className="investment-plan-viz-item-legend">
+            {sortedItems.map((item) => (
+              <li key={`${item.name}-${item.platform || ''}`}>
+                <i className="investment-plan-viz-item-swatch" style={{ backgroundColor: item.color }} aria-hidden="true" />
+                <div className="investment-plan-viz-item-main">
+                  <span className="investment-plan-viz-item-name">{item.name}</span>
+                  <span className="investment-plan-viz-item-meta">
+                    <em className="investment-plan-viz-item-tag" style={{ '--tag-color': item.groupColor }}>
+                      {item.tag}
+                    </em>
+                    {(item.platform || '').trim() && (
+                      <>
+                        <span className="investment-plan-viz-item-sep">·</span>
+                        <span className="investment-plan-viz-item-platform">{(item.platform || '').trim()}</span>
+                      </>
                     )}
-                    <span className="investment-plan-viz-line-amt">
-                      ₹{(Number(line.amount) || 0).toLocaleString('en-IN')}
-                      <em className="investment-plan-viz-line-pct">
-                        {formatSharePct(line.amount, g.total)}% of {g.tag}
-                      </em>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
+                  </span>
+                </div>
+                <span className="investment-plan-viz-item-amt">
+                  ₹{(Number(item.amount) || 0).toLocaleString('en-IN')}
+                  <em>{formatSharePct(item.amount, totalPlanned)}%</em>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
+      </section>
 
+      <section className="investment-plan-viz-charts-row">
         <div className="investment-plan-viz-chart">
-          <h3>Split by group</h3>
+          <h3 className="investment-plan-viz-section-title">Split by group</h3>
           <div className="investment-plan-viz-chart-wrap">
-            <Pie data={pieData} options={pieOptions} />
+            <Pie data={groupPieData} options={groupPieOptions} />
           </div>
           <ul className="investment-plan-viz-bar-legend investment-plan-viz-pie-legend">
             {groups.map((g) => (
@@ -285,16 +372,46 @@ export default function InvestmentPlanVisualization({ itemsWithAmount, notes, to
             ))}
           </ul>
         </div>
-      </div>
+      </section>
 
       <section className="investment-plan-viz-within-groups">
-        <h3 className="investment-plan-viz-within-title">Within each group</h3>
-        <p className="investment-plan-viz-within-sub muted small">
-          How each group splits across individual allocations
-        </p>
+        <h3 className="investment-plan-viz-section-title">Within each group</h3>
         <div className="investment-plan-viz-group-charts">
           {groups.map((g) => (
             <GroupDetailChart key={g.tag} group={g} totalPlanned={totalPlanned} />
+          ))}
+        </div>
+      </section>
+
+      <section className="investment-plan-viz-details">
+        <h3 className="investment-plan-viz-section-title">By group</h3>
+        <div className="investment-plan-viz-groups">
+          {groups.map((g) => (
+            <article key={g.tag} className="investment-plan-viz-group" style={{ '--group-color': g.color }}>
+              <header className="investment-plan-viz-group-head">
+                <span className="investment-plan-viz-group-tag">{g.tag}</span>
+                <span className="investment-plan-viz-group-amt">
+                  ₹{g.total.toLocaleString('en-IN')}
+                  <em>{formatSharePct(g.total, totalPlanned)}%</em>
+                </span>
+              </header>
+              <ul className="investment-plan-viz-group-lines">
+                {g.lines.map((line) => (
+                  <li key={`${line.name}-${line.platform || ''}`}>
+                    <span className="investment-plan-viz-line-name">{line.name}</span>
+                    {(line.platform || '').trim() ? (
+                      <span className="investment-plan-viz-line-platform">{(line.platform || '').trim()}</span>
+                    ) : (
+                      <span className="investment-plan-viz-line-platform investment-plan-viz-line-platform-empty" aria-hidden="true" />
+                    )}
+                    <span className="investment-plan-viz-line-amt">
+                      ₹{(Number(line.amount) || 0).toLocaleString('en-IN')}
+                      <em className="investment-plan-viz-line-pct">{formatSharePct(line.amount, totalPlanned)}%</em>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </article>
           ))}
         </div>
       </section>

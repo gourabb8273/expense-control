@@ -230,6 +230,25 @@ function linePointRadius(status) {
   return 3;
 }
 
+function BalanceSheetSeriesLegend() {
+  return (
+    <div className="balance-sheet-line-series-legend" aria-label="Chart line colors">
+      <span className="bs-series-key">
+        <i className="bs-series-key-line bs-series-assets" aria-hidden="true" />
+        Assets
+      </span>
+      <span className="bs-series-key">
+        <i className="bs-series-key-line bs-series-debts" aria-hidden="true" />
+        Debts
+      </span>
+      <span className="bs-series-key">
+        <i className="bs-series-key-line bs-series-nw" aria-hidden="true" />
+        Net worth
+      </span>
+    </div>
+  );
+}
+
 function ChartBreakdownList({ items, labelKey, total }) {
   if (!items?.length || !total) return null;
   return (
@@ -701,14 +720,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
       plugins: {
         datalabels: isMobile ? { display: false } : datalabelsLine,
         legend: {
-          position: 'bottom',
-          labels: {
-            usePointStyle: true,
-            pointStyle: 'circle',
-            padding: 14,
-            font: { size: 11, weight: '500' },
-            color: '#cbd5e1',
-          },
+          display: false,
         },
         tooltip: {
           backgroundColor: 'rgba(15, 23, 42, 0.92)',
@@ -864,10 +876,11 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
                 <h3 className="balance-sheet-year-subtitle balance-sheet-line-trend-title">
                   Assets, debts &amp; net worth over months
                 </h3>
-                <p className="muted small balance-sheet-line-legend">
-                  Jan–{MONTH_NAMES[getAllChartMonthNumbers(year).slice(-1)[0] || 12]} shown.
-                  <span className="legend-dot legend-dot-active" /> Saved month
-                  <span className="legend-dot legend-dot-carried" /> Carried / no change
+                <BalanceSheetSeriesLegend />
+                <p className="muted small balance-sheet-line-month-legend">
+                  Months · Jan–{MONTH_NAMES[getAllChartMonthNumbers(year).slice(-1)[0] || 12]}
+                  <span className="legend-dot legend-dot-active" /> Saved
+                  <span className="legend-dot legend-dot-carried" /> Carried
                   <span className="legend-dot legend-dot-empty" /> No data
                 </p>
               </div>

@@ -108,6 +108,9 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
 }
 
 .filters {
@@ -122,6 +125,8 @@
   gap: 1rem;
   width: 100%;
   min-width: 0;
+  overflow: visible;
+  position: relative;
 }
 
 .monthly-overview {
@@ -959,7 +964,7 @@
 .yearly-trend-top .chart-wrap-line,
 .balance-sheet-line-chart.chart-line-scroll-inner,
 .balance-sheet-line-chart {
-  height: 220px;
+  height: 240px;
 }
 
 @media (max-width: 640px) {
@@ -972,7 +977,7 @@
   .yearly-trend-top .chart-wrap-line,
   .balance-sheet-line-chart.chart-line-scroll-inner,
   .balance-sheet-line-chart {
-    height: 240px;
+    height: 250px;
   }
 }
 
@@ -1748,10 +1753,10 @@
 /* Plan visualization (month view) */
 .investment-plan-viz {
   margin-top: 0.5rem;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  background: linear-gradient(145deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.06));
+  padding: 1rem 1.05rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(129, 140, 248, 0.22);
+  background: linear-gradient(165deg, rgba(30, 27, 75, 0.45) 0%, rgba(15, 23, 42, 0.92) 48%, rgba(15, 23, 42, 0.98) 100%);
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -1764,7 +1769,395 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem 1.25rem;
+  margin-bottom: 0.85rem;
+}
+
+.investment-plan-viz-section-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.investment-plan-viz-strip {
   margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.investment-plan-viz-group-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.55rem;
+  margin-top: 0.55rem;
+}
+
+.investment-plan-viz-group-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.investment-plan-viz-group-pill i {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--pill-color, #818cf8);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pill-color, #818cf8) 35%, transparent);
+}
+
+.investment-plan-viz-group-pill em {
+  font-style: normal;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.investment-plan-viz-primary {
+  margin-bottom: 1rem;
+}
+
+.investment-plan-viz-item-chart {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) minmax(0, 1fr);
+  gap: 0.85rem 1.15rem;
+  align-items: start;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.investment-plan-viz-donut-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 200px;
+  margin: 0 auto;
+}
+
+.investment-plan-viz-donut-canvas {
+  height: 190px;
+}
+
+.investment-plan-viz-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+  gap: 0.1rem;
+}
+
+.investment-plan-viz-donut-center span {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.investment-plan-viz-donut-center strong {
+  font-size: 0.95rem;
+  color: #e2e8f0;
+  line-height: 1.2;
+}
+
+.investment-plan-viz-item-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.investment-plan-viz-item-legend li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.4rem 0.45rem;
+  border-radius: 0.5rem;
+  transition: background 0.15s ease;
+}
+
+.investment-plan-viz-item-legend li:hover {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.investment-plan-viz-item-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.6);
+}
+
+.investment-plan-viz-item-main {
+  min-width: 0;
+}
+
+.investment-plan-viz-item-name {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.investment-plan-viz-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem;
+  margin-top: 0.12rem;
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.investment-plan-viz-item-tag {
+  font-style: normal;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-weight: 600;
+  color: var(--tag-color, #a5b4fc);
+  background: color-mix(in srgb, var(--tag-color, #818cf8) 18%, transparent);
+}
+
+.investment-plan-viz-item-sep {
+  opacity: 0.5;
+}
+
+.investment-plan-viz-item-platform {
+  color: #94a3b8;
+}
+
+.investment-plan-viz-item-amt {
+  text-align: right;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #c4b5fd;
+  white-space: nowrap;
+}
+
+.investment-plan-viz-item-amt em {
+  display: block;
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.investment-plan-viz-details {
+  padding-top: 0.15rem;
+}
+
+.investment-plan-viz-charts-row {
+  margin-bottom: 1rem;
+}
+
+.investment-plan-viz-chart {
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  max-width: min(100%, 360px);
+}
+
+.investment-plan-viz-chart-wrap {
+  height: 200px;
+}
+
+.investment-plan-viz-pie-legend {
+  margin-top: 0.65rem;
+}
+
+.investment-plan-viz-within-groups {
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.investment-plan-viz-group-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.65rem;
+}
+
+.investment-plan-viz-group-chart {
+  border-radius: 0.55rem;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(15, 23, 42, 0.35);
+  overflow: hidden;
+  border-left: 3px solid var(--group-color, #818cf8);
+}
+
+.investment-plan-viz-group-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.55rem;
+  background: rgba(15, 23, 42, 0.2);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.investment-plan-viz-group-chart-tag {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--group-color, #a5b4fc);
+}
+
+.investment-plan-viz-group-chart-meta {
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.investment-plan-viz-group-chart-meta em {
+  font-style: normal;
+  margin-left: 0.3rem;
+  font-size: 0.66rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.investment-plan-viz-group-chart-body {
+  display: grid;
+  grid-template-columns: minmax(0, 88px) minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0.5rem 0.55rem 0.6rem;
+  align-items: center;
+}
+
+.investment-plan-viz-group-chart-pie {
+  height: 88px;
+}
+
+.investment-plan-viz-group-chart-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.investment-plan-viz-group-chart-legend li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 0.3rem 0.35rem;
+  align-items: baseline;
+  font-size: 0.7rem;
+}
+
+.investment-plan-viz-group-chart-legend-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #cbd5e1;
+}
+
+.investment-plan-viz-group-chart-legend strong {
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+.investment-plan-viz-group-chart-legend em {
+  font-style: normal;
+  color: #64748b;
+  font-size: 0.65rem;
+}
+
+.investment-plan-viz-group-chart-single {
+  padding: 0.5rem 0.55rem 0.6rem;
+}
+
+.investment-plan-viz-group-chart-single .investment-plan-viz-mini-bar {
+  margin: 0 0 0.4rem;
+}
+
+.investment-plan-viz-group-chart-single-line {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.76rem;
+}
+
+.investment-plan-viz-group-chart-single-line strong {
+  color: #c4b5fd;
+  white-space: nowrap;
+}
+
+.investment-plan-viz-mini-bar {
+  display: flex;
+  height: 0.35rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.25);
+}
+
+.investment-plan-viz-mini-bar-seg {
+  min-width: 1px;
+  height: 100%;
+}
+
+.investment-plan-viz-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.investment-plan-viz-bar-legend {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+}
+
+.investment-plan-viz-bar-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+}
+
+.investment-plan-viz-bar-legend strong {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.investment-plan-viz-bar-legend em {
+  font-style: normal;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.investment-plan-viz-details .investment-plan-viz-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.55rem;
 }
 
 .investment-plan-viz-total-label {
@@ -1806,14 +2199,8 @@
   margin-bottom: 1rem;
 }
 
-.investment-plan-viz-bar-caption {
-  margin: 0 0 0.4rem;
-  font-size: 0.72rem;
-  color: #64748b;
-}
-
 .investment-plan-viz-bar-nested {
-  height: 0.85rem;
+  height: 0.55rem;
 }
 
 .investment-plan-viz-bar-group {
@@ -1898,25 +2285,18 @@
   font-size: 0.72rem;
 }
 
-.investment-plan-viz-body {
-  display: grid;
-  grid-template-columns: 1fr min(280px, 38%);
-  gap: 1rem;
-  align-items: start;
-}
-
 .investment-plan-viz-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.55rem;
 }
 
 .investment-plan-viz-group {
-  border-radius: 0.6rem;
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
+  border-radius: 0.55rem;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(15, 23, 42, 0.35);
   overflow: hidden;
-  border-left: 3px solid var(--group-color, #22c55e);
+  border-left: 3px solid var(--group-color, #818cf8);
 }
 
 .investment-plan-viz-group-head {
@@ -1924,9 +2304,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.5rem 0.65rem;
-  background: rgba(15, 23, 42, 0.25);
-  border-bottom: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.35));
+  padding: 0.4rem 0.55rem;
+  background: rgba(15, 23, 42, 0.2);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
 }
 
 .investment-plan-viz-group-tag {
@@ -1952,17 +2332,17 @@
 .investment-plan-viz-group-lines {
   list-style: none;
   margin: 0;
-  padding: 0.35rem 0;
+  padding: 0.2rem 0;
 }
 
 .investment-plan-viz-group-lines li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(4.5rem, auto) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 0.5rem 0.65rem;
-  padding: 0.35rem 0.65rem;
-  font-size: 0.82rem;
-  border-bottom: 1px solid rgba(55, 65, 81, 0.2);
+  gap: 0.4rem 0.55rem;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.78rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
 }
 
 .investment-plan-viz-group-lines li:last-child {
@@ -1979,169 +2359,118 @@
 
 .investment-plan-viz-line-amt {
   font-weight: 600;
-  color: #86efac;
+  color: #c4b5fd;
   white-space: nowrap;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.1rem;
+  gap: 0.05rem;
+  font-size: 0.76rem;
 }
 
 .investment-plan-viz-line-pct {
   font-style: normal;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 500;
   color: #64748b;
 }
 
-.investment-plan-viz-within-groups {
-  margin-top: 1.15rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.35));
+[data-theme="light"] .investment-plan-viz {
+  background: linear-gradient(165deg, rgba(238, 242, 255, 0.95) 0%, rgba(248, 250, 252, 0.98) 100%);
+  border-color: rgba(129, 140, 248, 0.25);
 }
 
-.investment-plan-viz-within-title {
-  margin: 0;
-  font-size: 0.9rem;
+[data-theme="light"] .investment-plan-viz-item-chart,
+[data-theme="light"] .investment-plan-viz-group,
+[data-theme="light"] .investment-plan-viz-chart,
+[data-theme="light"] .investment-plan-viz-group-chart {
+  background: rgba(255, 255, 255, 0.85);
 }
 
-.investment-plan-viz-within-sub {
-  margin: 0.25rem 0 0.75rem;
+[data-theme="light"] .investment-plan-viz-group-chart-single-line strong {
+  color: #4f46e5;
 }
 
-.investment-plan-viz-group-charts {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 0.75rem;
+[data-theme="light"] .investment-plan-viz-item-name {
+  color: #0f172a;
 }
 
-.investment-plan-viz-group-chart {
-  border-radius: 0.6rem;
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  overflow: hidden;
-  border-left: 3px solid var(--group-color, #22c55e);
+[data-theme="light"] .investment-plan-viz-item-amt,
+[data-theme="light"] .investment-plan-viz-line-amt {
+  color: #4f46e5;
 }
 
-.investment-plan-viz-group-chart-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.45rem 0.6rem;
-  background: rgba(15, 23, 42, 0.2);
-  border-bottom: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.35));
+[data-theme="light"] .investment-plan-viz-donut-center strong {
+  color: #0f172a;
 }
 
-.investment-plan-viz-group-chart-tag {
-  font-weight: 700;
-  font-size: 0.82rem;
-  color: var(--group-color, #86efac);
+[data-theme="light"] .investment-plan-viz-total-amt {
+  color: #15803d;
 }
 
-.investment-plan-viz-group-chart-meta {
-  font-size: 0.78rem;
-  font-weight: 600;
-  white-space: nowrap;
+[data-theme="light"] .investment-plan-viz-notes {
+  background: rgba(241, 245, 249, 0.9);
+  color: #334155;
 }
 
-.investment-plan-viz-group-chart-meta em {
-  font-style: normal;
-  margin-left: 0.3rem;
-  font-size: 0.68rem;
-  color: #64748b;
-  font-weight: 500;
-}
+@media (max-width: 768px) {
+  .investment-plan-viz-item-chart {
+    grid-template-columns: 1fr;
+  }
 
-.investment-plan-viz-group-chart-body {
-  display: grid;
-  grid-template-columns: minmax(0, 88px) minmax(0, 1fr);
-  gap: 0.5rem;
-  padding: 0.5rem 0.6rem 0.6rem;
-  align-items: center;
-}
+  .investment-plan-viz-donut-canvas {
+    height: 210px;
+  }
 
-.investment-plan-viz-group-chart-pie {
-  height: 88px;
-}
+  .investment-plan-viz-item-legend {
+    max-height: none;
+  }
 
-.investment-plan-viz-group-chart-legend {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
+  .investment-plan-viz-details .investment-plan-viz-groups {
+    grid-template-columns: 1fr;
+  }
 
-.investment-plan-viz-group-chart-legend li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  gap: 0.3rem 0.4rem;
-  align-items: baseline;
-  font-size: 0.72rem;
-}
+  .investment-plan-viz-group-charts {
+    grid-template-columns: 1fr;
+  }
 
-.investment-plan-viz-group-chart-legend-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #cbd5e1;
-}
+  .investment-plan-viz-group-chart-body {
+    grid-template-columns: 1fr;
+  }
 
-.investment-plan-viz-group-chart-legend strong {
-  font-weight: 600;
-  color: #e2e8f0;
-  white-space: nowrap;
-}
+  .investment-plan-viz-group-chart-pie {
+    height: 120px;
+    max-width: 140px;
+    margin: 0 auto;
+  }
 
-.investment-plan-viz-group-chart-legend em {
-  font-style: normal;
-  color: #64748b;
-  font-size: 0.68rem;
-}
+  .investment-plan-viz-chart {
+    max-width: 100%;
+  }
 
-.investment-plan-viz-group-chart-single {
-  padding: 0.55rem 0.6rem 0.65rem;
-}
+  .investment-plan-viz-group-lines li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name amt'
+      'platform platform';
+  }
 
-.investment-plan-viz-group-chart-single .investment-plan-viz-mini-bar {
-  margin: 0 0 0.45rem;
-}
+  .investment-plan-viz-line-name {
+    grid-area: name;
+  }
 
-.investment-plan-viz-group-chart-single-line {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.78rem;
-}
+  .investment-plan-viz-line-platform {
+    grid-area: platform;
+    justify-self: start;
+  }
 
-.investment-plan-viz-group-chart-single-line strong {
-  color: #86efac;
-  white-space: nowrap;
-}
+  .investment-plan-viz-line-platform-empty {
+    display: none;
+  }
 
-.investment-plan-viz-chart {
-  padding: 0.65rem;
-  border-radius: 0.6rem;
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-}
-
-.investment-plan-viz-chart h3 {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
-}
-
-.investment-plan-viz-chart-wrap {
-  height: 220px;
-}
-
-.investment-plan-viz-pie-legend {
-  margin-top: 0.65rem;
+  .investment-plan-viz-line-amt {
+    grid-area: amt;
+  }
 }
 
 .investment-plan-edit-panel {
@@ -2180,48 +2509,12 @@
   background: rgba(120, 53, 15, 0.25);
 }
 
-[data-theme="light"] .investment-plan-viz {
-  background: linear-gradient(145deg, rgba(34, 197, 94, 0.08), rgba(59, 130, 246, 0.05));
-}
-
-[data-theme="light"] .investment-plan-viz-total-amt {
-  color: #15803d;
-}
-
-[data-theme="light"] .investment-plan-viz-notes {
-  background: rgba(241, 245, 249, 0.9);
-  color: #334155;
-}
-
 [data-theme="light"] .investment-plan-viz-line-amt,
-[data-theme="light"] .investment-plan-viz-group-amt,
-[data-theme="light"] .investment-plan-viz-group-chart-single-line strong {
-  color: #15803d;
+[data-theme="light"] .investment-plan-viz-group-amt {
+  color: #4f46e5;
 }
 
 @media (max-width: 768px) {
-  .investment-plan-viz-group-chart-body {
-    grid-template-columns: 1fr;
-  }
-
-  .investment-plan-viz-group-chart-pie {
-    height: 120px;
-    max-width: 140px;
-    margin: 0 auto;
-  }
-
-  .investment-plan-viz-group-charts {
-    grid-template-columns: 1fr;
-  }
-
-  .investment-plan-viz-body {
-    grid-template-columns: 1fr;
-  }
-
-  .investment-plan-viz-chart-wrap {
-    height: 200px;
-  }
-
   .investment-plan-viz-total-amt {
     font-size: 1.45rem;
   }
@@ -2357,7 +2650,7 @@
 }
 
 .balance-sheet-line-chart:not(.chart-line-scroll-inner) {
-  height: 220px;
+  height: 240px;
 }
 
 .balance-sheet-tag-charts-note {
@@ -2375,6 +2668,68 @@
   align-items: center;
   gap: 0.35rem 0.75rem;
   margin: 0 0 0.5rem;
+}
+
+.balance-sheet-line-series-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0 0 0.65rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.5rem;
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.35));
+}
+
+[data-theme="light"] .balance-sheet-line-series-legend {
+  background: rgba(241, 245, 249, 0.9);
+}
+
+.bs-series-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bs-series-key-line {
+  display: inline-block;
+  width: 1.35rem;
+  height: 0.2rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.bs-series-key-line.bs-series-assets {
+  background: #22c55e;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35);
+}
+
+.bs-series-key-line.bs-series-debts {
+  background: #ef4444;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.35);
+}
+
+.bs-series-key-line.bs-series-nw {
+  background: #818cf8;
+  height: 0.24rem;
+  box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.35);
+}
+
+.balance-sheet-line-month-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.balance-sheet-line-month-legend .legend-dot {
+  margin-left: 0.35rem;
 }
 
 .legend-dot {
@@ -3348,19 +3703,17 @@
   top: 0;
   z-index: 50;
   margin: 0;
-  padding: 0.65rem 0.85rem;
+  padding: 0.7rem 0.9rem;
   border-radius: 0.65rem;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   box-shadow: var(--card-shadow);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  align-self: flex-start;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  overflow: hidden;
 }
 
 [data-theme="light"] .sticky-month-summary {
@@ -3387,7 +3740,7 @@
   width: 100%;
   gap: 0.35rem 0.75rem;
   align-items: baseline;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
 }
 
 .sticky-month-row-single {
@@ -3410,12 +3763,12 @@
 
 .sticky-month-cash-line {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: flex-end;
-  gap: 0.4rem;
+  gap: 0.35rem 0.5rem;
   min-width: 0;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
 }
 
 .sticky-cash-sep {
@@ -3461,9 +3814,13 @@
 .sticky-stat em,
 .sticky-stat .sticky-pct-of-inflow {
   font-style: normal;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   color: #64748b;
   margin-left: 0.25rem;
+}
+
+.sticky-stat strong {
+  font-size: 1.02em;
 }
 
 .sticky-change-pct {
@@ -3506,44 +3863,21 @@
   }
 
   .sticky-month-summary {
-    padding: 0.5rem 0.6rem;
+    padding: 0.6rem 0.7rem;
   }
 
   .sticky-month-row {
-    font-size: 0.72rem;
-    gap: 0.25rem 0.45rem;
-  }
-
-  .sticky-month-row-pair {
-    grid-template-columns: 1fr;
+    font-size: 0.8rem;
+    gap: 0.3rem 0.5rem;
   }
 
   .sticky-month-cash-line {
-    flex-wrap: wrap;
     justify-content: flex-start;
-    font-size: 0.68rem;
-    gap: 0.25rem 0.35rem;
-  }
-
-  .sticky-stat-inline {
-    white-space: normal;
+    font-size: 0.78rem;
   }
 
   .sticky-stat strong {
-    font-size: 0.92em;
-  }
-
-  .sticky-stat em {
-    display: inline;
-    font-size: 0.62rem;
-  }
-
-  .sticky-change-pct {
-    display: none;
-  }
-
-  .sticky-month-row-single:last-child .sticky-stat-nw strong {
-    font-size: 0.85rem;
+    font-size: 1em;
   }
 
   .investment-plan-viz {
