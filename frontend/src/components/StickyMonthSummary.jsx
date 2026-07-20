@@ -1,23 +1,52 @@
 const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-function pct(part, whole) {
+function pctOf(part, whole) {
   if (!whole || whole <= 0) return null;
   return Math.round((part / whole) * 1000) / 10;
 }
 
 function changeClass(diff, kind) {
   if (diff == null || diff === 0) return 'neutral';
-  if (kind === 'debts') return diff < 0 ? 'positive' : 'negative';
+  if (kind === 'debts' || kind === 'expense') return diff < 0 ? 'positive' : 'negative';
   return diff >= 0 ? 'positive' : 'negative';
 }
 
-function ChangeDelta({ change, kind }) {
+function ChangeDelta({ change, kind, prevValue }) {
   if (change == null || change === 0) return null;
   const cls = changeClass(change, kind);
+  const prev = Number(prevValue) || 0;
+  const pct = prev !== 0 ? Math.round((change / prev) * 1000) / 10 : null;
+  const arrow = change >= 0 ? '↑' : '↓';
+
   return (
-    <em className={cls}>
-      {change >= 0 ? '+' : '-'}₹{Math.abs(change).toLocaleString('en-IN')}
+    <em className={cls} title="Vs previous month">
+      {arrow} ₹{Math.abs(change).toLocaleString('en-IN')}
+      {pct != null && (
+        <span className="sticky-change-pct">
+          {' '}({pct >= 0 ? '+' : ''}{pct}%)
+        </span>
+      )}
     </em>
+  );
+}
+
+function StickyStat({
+  label,
+  value,
+  className = '',
+  title,
+  pctOfInflow = null,
+  change = null,
+  changeKind,
+  changePrev = null,
+}) {
+  return (
+    <span className={`sticky-stat ${className}`.trim()} title={title}>
+      {label}{' '}
+      <strong>₹{Number(value || 0).toLocaleString('en-IN')}</strong>
+      {pctOfInflow != null && <em className="sticky-pct-of-inflow">{pctOfInflow}%</em>}
+      <ChangeDelta change={change} kind={changeKind} prevValue={changePrev} />
+    </span>
   );
 }
 
@@ -25,53 +54,121 @@ export default function StickyMonthSummary({
   year,
   month,
   inflow,
+  inflowPrev = null,
+  remaining = 0,
   expense,
+  expensePrev = null,
   investment,
+  investmentPrev = null,
   netWorth = 0,
   netWorthChange = null,
+  netWorthPrev = null,
   totalAssets = 0,
   totalAssetsChange = null,
+  totalAssetsPrev = null,
   totalDebts = 0,
   totalDebtsChange = null,
+  totalDebtsPrev = null,
   loading,
 }) {
   const monthLabel = MONTH_NAMES[month] || month;
-  const investPct = pct(investment, inflow);
-  const expensePct = pct(expense, inflow);
+
+  const inflowChange =
+    inflowPrev != null ? Number(inflow || 0) - Number(inflowPrev || 0) : null;
+  const investmentChange =
+    investmentPrev != null ? Number(investment || 0) - Number(investmentPrev || 0) : null;
+  const expenseChange =
+    expensePrev != null ? Number(expense || 0) - Number(expensePrev || 0) : null;
 
   return (
     <div className="sticky-month-summary">
-      <div className="sticky-month-inner">
-        <span className="sticky-month-label">
-          <strong>{monthLabel} {year}</strong>
-        </span>
-        {loading ? (
-          <span className="muted small">Loading…</span>
-        ) : (
+      <div className="sticky-month-rows">
+        <div className="sticky-month-row sticky-month-row-label">
+          <span className="sticky-month-label">
+            <strong>{monthLabel} {year}</strong>
+          </span>
+          {loading ? (
+            <span className="muted small">Loading…</span>
+          ) : (
+            <div className="sticky-month-cash-line">
+              <StickyStat
+                label="Inflow"
+                value={inflow}
+                className="sticky-stat-in sticky-stat-inline"
+                title="Cash inflow"
+                change={inflowChange}
+                changeKind="inflow"
+                changePrev={inflowPrev}
+              />
+              <span className="sticky-cash-sep" aria-hidden="true">·</span>
+              <StickyStat
+                label="Remain"
+                value={remaining}
+                className={`sticky-stat-rem sticky-stat-inline ${remaining >= 0 ? 'positive' : 'negative'}`}
+                title="Remaining after investment + expense"
+                pctOfInflow={remaining >= 0 ? pctOf(remaining, inflow) : null}
+              />
+            </div>
+          )}
+        </div>
+
+        {!loading && (
           <>
-            <span className="sticky-stat sticky-stat-in" title="Cash inflow">
-              In <strong>₹{Number(inflow || 0).toLocaleString('en-IN')}</strong>
-            </span>
-            <span className="sticky-stat sticky-stat-inv" title="Investments">
-              Inv <strong>₹{Number(investment || 0).toLocaleString('en-IN')}</strong>
-              {investPct != null && <em>{investPct}%</em>}
-            </span>
-            <span className="sticky-stat sticky-stat-exp" title="Expenses">
-              Exp <strong>₹{Number(expense || 0).toLocaleString('en-IN')}</strong>
-              {expensePct != null && <em>{expensePct}%</em>}
-            </span>
-            <span className="sticky-stat sticky-stat-nw" title="Net worth (assets − debts)">
-              NW <strong>₹{Number(netWorth || 0).toLocaleString('en-IN')}</strong>
-              <ChangeDelta change={netWorthChange} kind="netWorth" />
-            </span>
-            <span className="sticky-stat sticky-stat-assets" title="Total assets">
-              Assets <strong>₹{Number(totalAssets || 0).toLocaleString('en-IN')}</strong>
-              <ChangeDelta change={totalAssetsChange} kind="assets" />
-            </span>
-            <span className="sticky-stat sticky-stat-debts" title="Total debts">
-              Debts <strong>₹{Number(totalDebts || 0).toLocaleString('en-IN')}</strong>
-              <ChangeDelta change={totalDebtsChange} kind="debts" />
-            </span>
+            <div className="sticky-month-row sticky-month-row-pair">
+              <StickyStat
+                label="Inv"
+                value={investment}
+                className="sticky-stat-inv"
+                title="Investments"
+                pctOfInflow={pctOf(investment, inflow)}
+                change={investmentChange}
+                changeKind="investment"
+                changePrev={investmentPrev}
+              />
+              <StickyStat
+                label="Exp"
+                value={expense}
+                className="sticky-stat-exp"
+                title="Expenses"
+                pctOfInflow={pctOf(expense, inflow)}
+                change={expenseChange}
+                changeKind="expense"
+                changePrev={expensePrev}
+              />
+            </div>
+
+            <div className="sticky-month-row sticky-month-row-pair">
+              <StickyStat
+                label="Assets"
+                value={totalAssets}
+                className="sticky-stat-assets"
+                title="Total assets"
+                change={totalAssetsChange}
+                changeKind="assets"
+                changePrev={totalAssetsPrev}
+              />
+              <StickyStat
+                label="Debts"
+                value={totalDebts}
+                className="sticky-stat-debts"
+                title="Total debts"
+                change={totalDebtsChange}
+                changeKind="debts"
+                changePrev={totalDebtsPrev}
+              />
+            </div>
+
+            <div className="sticky-month-row sticky-month-row-single">
+              <StickyStat
+                label="Net worth"
+                value={netWorth}
+                className="sticky-stat-nw"
+                title="Net worth (assets − debts)"
+                change={netWorthChange}
+                changeKind="netWorth"
+                changePrev={netWorthPrev}
+              />
+            </div>
           </>
         )}
       </div>

@@ -8,6 +8,8 @@ import YearlyCharts, { YearlyTrendChart } from '../components/YearlyCharts';
 import ManageCategoriesModal from '../components/ManageCategoriesModal';
 import BalanceSheetSection from '../components/BalanceSheetSection';
 import BalanceSheetYearSection from '../components/BalanceSheetYearSection';
+import InvestmentPlanSection from '../components/InvestmentPlanSection';
+import InvestmentPlanYearSection from '../components/InvestmentPlanYearSection';
 import { exportMonthlyPdf, exportYearlyPdf } from '../utils/exportPdf';
 import CashInflowSection from '../components/CashInflowSection';
 import { MonthlyCashInflowCharts, YearlyCashInflowCharts } from '../components/CashInflowCharts';
@@ -71,13 +73,14 @@ function DashboardPage() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
-  const [viewMode, setViewMode] = useState('monthly'); // 'monthly' | 'yearly'
+  const [viewMode, setViewMode] = useState('monthly'); // 'monthly' | 'yearly' | 'portfolio'
   const [staticCategories, setStaticCategories] = useState([]);
   const [categoriesModalOpen, setCategoriesModalOpen] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [listFilter, setListFilter] = useState('all'); // 'all' | 'expense' | 'investment'
   const [searchQuery, setSearchQuery] = useState('');
   const [balanceSheetRefreshKey, setBalanceSheetRefreshKey] = useState(0);
+  const [investmentPlanRefreshKey, setInvestmentPlanRefreshKey] = useState(0);
   const [entriesExpanded, setEntriesExpanded] = useState(true);
   const [tagsRefreshKey, setTagsRefreshKey] = useState(0);
   const [cashflowRefreshKey, setCashflowRefreshKey] = useState(0);
@@ -603,6 +606,13 @@ function DashboardPage() {
             >
               Year view
             </button>
+            <button
+              type="button"
+              className={viewMode === 'portfolio' ? 'primary-btn' : 'ghost-btn'}
+              onClick={() => setViewMode('portfolio')}
+            >
+              Portfolio
+            </button>
           </div>
           <div className="export-pdf-row">
             {viewMode === 'monthly' && (
@@ -628,7 +638,6 @@ function DashboardPage() {
           </div>
 
           {viewMode === 'monthly' && (
-            <>
               <div className="filter-group">
                 <label>
                   <span>Month</span>
@@ -654,20 +663,81 @@ function DashboardPage() {
                   </select>
                 </label>
               </div>
-              <StickyMonthSummary
-                year={year}
-                month={month}
-                inflow={cashflowAmount}
-                expense={expenseAmount}
-                investment={investmentAmount}
-                netWorth={balanceSheetMeta.netWorth}
-                netWorthChange={netWorthChange}
-                totalAssets={balanceSheetMeta.totalAssets}
-                totalAssetsChange={totalAssetsChange}
-                totalDebts={balanceSheetMeta.totalDebts}
-                totalDebtsChange={totalDebtsChange}
-                loading={loading}
-              />
+          )}
+
+          {viewMode === 'yearly' && (
+            <>
+            <div className="filter-group">
+              <label>
+                <span>Year (for year view)</span>
+                <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <YearRemarksSection key={year} year={year} />
+            </>
+          )}
+
+          {viewMode === 'portfolio' && (
+            <>
+              <div className="filter-group">
+                <label>
+                  <span>Month</span>
+                  <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+                    {Array.from({ length: 12 }).map((_, idx) => {
+                      const m = idx + 1;
+                      return (
+                        <option key={m} value={m}>
+                          {new Date(2000, m - 1, 1).toLocaleString('default', { month: 'short' })}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+                <label>
+                  <span>Year</span>
+                  <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
+                    {yearOptions.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </>
+          )}
+        </section>
+
+        {viewMode === 'monthly' && (
+          <div className="monthly-view-body">
+          <StickyMonthSummary
+            year={year}
+            month={month}
+            inflow={cashflowAmount}
+            inflowPrev={monthlyComparison.cashflowPrev}
+            remaining={remainingBalance}
+            expense={expenseAmount}
+            expensePrev={monthlyComparison.prevExpense}
+            investment={investmentAmount}
+            investmentPrev={monthlyComparison.prevInvestment}
+            netWorth={balanceSheetMeta.netWorth}
+            netWorthChange={netWorthChange}
+            netWorthPrev={prevMonthBalance?.netWorth ?? null}
+            totalAssets={balanceSheetMeta.totalAssets}
+            totalAssetsChange={totalAssetsChange}
+            totalAssetsPrev={prevMonthBalance?.totalAssets ?? null}
+            totalDebts={balanceSheetMeta.totalDebts}
+            totalDebtsChange={totalDebtsChange}
+            totalDebtsPrev={prevMonthBalance?.totalDebts ?? null}
+            loading={loading}
+          />
+          <section className="monthly-overview">
               <div className="monthly-cashflow">
                 <CashInflowSection
                   year={year}
@@ -746,29 +816,8 @@ function DashboardPage() {
                 }}
               />
               <MonthRemarkSection key={`${year}-${month}`} year={year} month={month} />
-            </>
-          )}
+          </section>
 
-          {viewMode === 'yearly' && (
-            <>
-            <div className="filter-group">
-              <label>
-                <span>Year (for year view)</span>
-                <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
-                  {yearOptions.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <YearRemarksSection key={year} year={year} />
-            </>
-          )}
-        </section>
-
-        {viewMode === 'monthly' && (
           <section className="dashboard-sections">
             <div className="content-block">
               <TransactionForm onCreated={handleCreateTransaction} staticCategories={staticCategories} />
@@ -1045,6 +1094,25 @@ function DashboardPage() {
                 comparison={monthlyComparison}
                 transactions={transactions}
               />
+            </div>
+          </section>
+          </div>
+        )}
+
+        {viewMode === 'portfolio' && (
+          <section className="dashboard-sections portfolio-view-page">
+            <div className="content-block">
+              <InvestmentPlanSection
+                year={year}
+                month={month}
+                tagsRefreshKey={tagsRefreshKey}
+                standalone
+                onSaved={() => {
+                  setInvestmentPlanRefreshKey((k) => k + 1);
+                  toast.success('Portfolio plan saved');
+                }}
+              />
+              <InvestmentPlanYearSection year={year} refreshKey={investmentPlanRefreshKey} embedded />
             </div>
           </section>
         )}

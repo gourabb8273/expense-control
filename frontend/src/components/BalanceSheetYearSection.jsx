@@ -14,6 +14,7 @@ import {
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { aggregateByTag } from '../utils/aggregateByTag';
+import { formatSharePct } from '../utils/formatSharePct';
 import CollapsibleChartCard from './CollapsibleChartCard';
 import { lineChartMinWidth } from './LineChartFrame';
 
@@ -220,7 +221,7 @@ function ChartBreakdownList({ items, labelKey, total }) {
       <ul className="chart-list">
         {items.map((item) => {
           const value = Number(item.value) || 0;
-          const pct = total ? Math.round((value / total) * 100) : 0;
+          const pct = formatSharePct(value, total);
           return (
             <li key={item[labelKey]} className="chart-list-row">
               <span className="chart-list-label">{item[labelKey]}</span>
@@ -257,7 +258,7 @@ const tagPieOptions = {
         label: (ctx) => {
           const v = ctx.raw || 0;
           const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
-          const pct = total ? Math.round((v / total) * 100) : 0;
+          const pct = formatSharePct(v, total);
           return `₹${Number(v).toLocaleString('en-IN')} (${pct}%)`;
         },
       },

@@ -116,10 +116,30 @@
   gap: 1rem;
 }
 
+.monthly-view-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.monthly-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 .view-toggle {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.portfolio-view-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .filter-group {
@@ -1434,6 +1454,822 @@
   margin-top: 0.75rem;
 }
 
+/* ——— Investment plan ——— */
+.investment-plan-card,
+.investment-plan-year-card {
+  margin-top: 0.75rem;
+}
+
+.investment-plan-card-standalone .investment-plan-viz {
+  margin-top: 0;
+}
+
+.investment-plan-standalone-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  width: 100%;
+}
+
+.investment-plan-standalone-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.investment-plan-bootstrap-note {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.45rem;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.investment-plan-edit-heading {
+  margin: 0.75rem 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.investment-plan-year-embedded {
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.35));
+  padding-top: 1rem;
+}
+
+.investment-plan-year-embedded-title {
+  margin: 0 0 0.65rem;
+  font-size: 1rem;
+}
+
+.investment-plan-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.investment-plan-row {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.65fr) minmax(0, 0.8fr) minmax(0, 0.6fr) auto;
+}
+
+.bs-field-platform-input {
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: rgba(30, 58, 138, 0.18);
+  color: #bfdbfe;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.82rem;
+  min-width: 0;
+}
+
+.bs-field-platform-input:focus {
+  outline: none;
+  border-color: rgba(96, 165, 250, 0.75);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+[data-theme="light"] .bs-field-platform-input {
+  background: rgba(219, 234, 254, 0.5);
+  color: #1e3a8a;
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.investment-plan-viz-line-platform {
+  display: inline-block;
+  width: fit-content;
+  max-width: 7.5rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  justify-self: end;
+}
+
+.investment-plan-viz-line-platform-empty {
+  visibility: hidden;
+  padding: 0;
+  border: none;
+  background: none;
+  min-width: 0;
+  max-width: 0;
+}
+
+[data-theme="light"] .investment-plan-viz-line-platform {
+  color: #1d4ed8;
+  background: rgba(219, 234, 254, 0.8);
+}
+
+.investment-plan-viz-group-lines li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(4.5rem, auto) auto;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+}
+
+.investment-plan-empty {
+  margin: 0 0 0.35rem;
+}
+
+.investment-plan-line-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.investment-plan-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.investment-plan-notes textarea {
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--card-border);
+  background: var(--input-bg, rgba(15, 23, 42, 0.5));
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.investment-plan-total {
+  margin-top: 0.75rem;
+}
+
+.investment-plan-total-amt {
+  color: #22c55e;
+}
+
+.investment-plan-charts {
+  margin-top: 0.75rem;
+}
+
+.investment-plan-latest {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--card-border);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.investment-plan-latest-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.investment-plan-latest-total {
+  color: #22c55e;
+  font-weight: 700;
+}
+
+.investment-plan-latest-notes {
+  margin: 0 0 0.65rem;
+  white-space: pre-wrap;
+}
+
+.investment-plan-latest-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.investment-plan-latest-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.45rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.35));
+  font-size: 0.85rem;
+}
+
+.investment-plan-latest-name {
+  font-weight: 500;
+}
+
+.investment-plan-latest-tag {
+  font-size: 0.68rem;
+  padding: 0.15rem 0.45rem;
+}
+
+.investment-plan-latest-amt {
+  font-weight: 600;
+  color: #86efac;
+  white-space: nowrap;
+}
+
+.investment-plan-year-tag-charts {
+  margin-top: 0.75rem;
+}
+
+.investment-plan-year-from {
+  margin: 0.35rem 0 0;
+}
+
+.investment-plan-monthly-totals {
+  margin-top: 1rem;
+}
+
+.investment-plan-monthly-totals h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.investment-plan-monthly-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.investment-plan-monthly-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--card-border);
+  font-size: 0.8rem;
+}
+
+.investment-plan-month-current {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.investment-plan-month-carried {
+  font-style: normal;
+  font-size: 0.68rem;
+  color: #64748b;
+  margin-left: 0.25rem;
+}
+
+/* Plan visualization (month view) */
+.investment-plan-viz {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  background: linear-gradient(145deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.06));
+}
+
+.investment-plan-viz-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.investment-plan-viz-total-label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+  margin-bottom: 0.15rem;
+}
+
+.investment-plan-viz-total-amt {
+  display: block;
+  font-size: 1.75rem;
+  line-height: 1.1;
+  color: #86efac;
+}
+
+.investment-plan-viz-total-meta {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.investment-plan-viz-notes {
+  margin: 0;
+  max-width: 22rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  border-left: 3px solid #22c55e;
+  background: rgba(15, 23, 42, 0.35);
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  white-space: pre-wrap;
+}
+
+.investment-plan-viz-bar-wrap {
+  margin-bottom: 1rem;
+}
+
+.investment-plan-viz-bar-caption {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.investment-plan-viz-bar-nested {
+  height: 0.85rem;
+}
+
+.investment-plan-viz-bar-group {
+  display: flex;
+  min-width: 2px;
+  height: 100%;
+  border-right: 1px solid rgba(15, 23, 42, 0.35);
+}
+
+.investment-plan-viz-bar-group:last-child {
+  border-right: none;
+}
+
+.investment-plan-viz-bar-subseg {
+  min-width: 1px;
+  height: 100%;
+}
+
+.investment-plan-viz-legend-sub {
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.investment-plan-viz-mini-bar {
+  display: flex;
+  height: 0.35rem;
+  margin: 0 0.65rem 0.35rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.25);
+}
+
+.investment-plan-viz-mini-bar-seg {
+  min-width: 1px;
+  height: 100%;
+}
+
+.investment-plan-viz-bar {
+  display: flex;
+  height: 0.65rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.investment-plan-viz-bar-seg {
+  min-width: 2px;
+  transition: width 0.2s ease;
+}
+
+.investment-plan-viz-bar-legend {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+}
+
+.investment-plan-viz-bar-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+}
+
+.investment-plan-viz-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.investment-plan-viz-bar-legend strong {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.investment-plan-viz-bar-legend em {
+  font-style: normal;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.investment-plan-viz-body {
+  display: grid;
+  grid-template-columns: 1fr min(280px, 38%);
+  gap: 1rem;
+  align-items: start;
+}
+
+.investment-plan-viz-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.investment-plan-viz-group {
+  border-radius: 0.6rem;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  overflow: hidden;
+  border-left: 3px solid var(--group-color, #22c55e);
+}
+
+.investment-plan-viz-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  background: rgba(15, 23, 42, 0.25);
+  border-bottom: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.35));
+}
+
+.investment-plan-viz-group-tag {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--group-color, #86efac);
+}
+
+.investment-plan-viz-group-amt {
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.investment-plan-viz-group-amt em {
+  font-style: normal;
+  margin-left: 0.35rem;
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.investment-plan-viz-group-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0;
+}
+
+.investment-plan-viz-group-lines li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(4.5rem, auto) auto;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.82rem;
+  border-bottom: 1px solid rgba(55, 65, 81, 0.2);
+}
+
+.investment-plan-viz-group-lines li:last-child {
+  border-bottom: none;
+}
+
+.investment-plan-viz-line-name {
+  color: #cbd5e1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.investment-plan-viz-line-amt {
+  font-weight: 600;
+  color: #86efac;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+}
+
+.investment-plan-viz-line-pct {
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.investment-plan-viz-within-groups {
+  margin-top: 1.15rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.35));
+}
+
+.investment-plan-viz-within-title {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.investment-plan-viz-within-sub {
+  margin: 0.25rem 0 0.75rem;
+}
+
+.investment-plan-viz-group-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.investment-plan-viz-group-chart {
+  border-radius: 0.6rem;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  overflow: hidden;
+  border-left: 3px solid var(--group-color, #22c55e);
+}
+
+.investment-plan-viz-group-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  background: rgba(15, 23, 42, 0.2);
+  border-bottom: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.35));
+}
+
+.investment-plan-viz-group-chart-tag {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--group-color, #86efac);
+}
+
+.investment-plan-viz-group-chart-meta {
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.investment-plan-viz-group-chart-meta em {
+  font-style: normal;
+  margin-left: 0.3rem;
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.investment-plan-viz-group-chart-body {
+  display: grid;
+  grid-template-columns: minmax(0, 88px) minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem 0.6rem;
+  align-items: center;
+}
+
+.investment-plan-viz-group-chart-pie {
+  height: 88px;
+}
+
+.investment-plan-viz-group-chart-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.investment-plan-viz-group-chart-legend li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 0.3rem 0.4rem;
+  align-items: baseline;
+  font-size: 0.72rem;
+}
+
+.investment-plan-viz-group-chart-legend-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #cbd5e1;
+}
+
+.investment-plan-viz-group-chart-legend strong {
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+.investment-plan-viz-group-chart-legend em {
+  font-style: normal;
+  color: #64748b;
+  font-size: 0.68rem;
+}
+
+.investment-plan-viz-group-chart-single {
+  padding: 0.55rem 0.6rem 0.65rem;
+}
+
+.investment-plan-viz-group-chart-single .investment-plan-viz-mini-bar {
+  margin: 0 0 0.45rem;
+}
+
+.investment-plan-viz-group-chart-single-line {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+}
+
+.investment-plan-viz-group-chart-single-line strong {
+  color: #86efac;
+  white-space: nowrap;
+}
+
+.investment-plan-viz-chart {
+  padding: 0.65rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+}
+
+.investment-plan-viz-chart h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+}
+
+.investment-plan-viz-chart-wrap {
+  height: 220px;
+}
+
+.investment-plan-viz-pie-legend {
+  margin-top: 0.65rem;
+}
+
+.investment-plan-edit-panel {
+  margin-top: 0.85rem;
+  border-top: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.35));
+  padding-top: 0.65rem;
+}
+
+.investment-plan-edit-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  width: 100%;
+  padding: 0.35rem 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.investment-plan-edit-hint {
+  font-weight: 400;
+}
+
+.investment-plan-edit-body {
+  margin-top: 0.5rem;
+}
+
+.investment-plan-draft-pill {
+  border-color: rgba(251, 191, 36, 0.45);
+  color: #fde68a;
+  background: rgba(120, 53, 15, 0.25);
+}
+
+[data-theme="light"] .investment-plan-viz {
+  background: linear-gradient(145deg, rgba(34, 197, 94, 0.08), rgba(59, 130, 246, 0.05));
+}
+
+[data-theme="light"] .investment-plan-viz-total-amt {
+  color: #15803d;
+}
+
+[data-theme="light"] .investment-plan-viz-notes {
+  background: rgba(241, 245, 249, 0.9);
+  color: #334155;
+}
+
+[data-theme="light"] .investment-plan-viz-line-amt,
+[data-theme="light"] .investment-plan-viz-group-amt,
+[data-theme="light"] .investment-plan-viz-group-chart-single-line strong {
+  color: #15803d;
+}
+
+@media (max-width: 768px) {
+  .investment-plan-viz-group-chart-body {
+    grid-template-columns: 1fr;
+  }
+
+  .investment-plan-viz-group-chart-pie {
+    height: 120px;
+    max-width: 140px;
+    margin: 0 auto;
+  }
+
+  .investment-plan-viz-group-charts {
+    grid-template-columns: 1fr;
+  }
+
+  .investment-plan-viz-body {
+    grid-template-columns: 1fr;
+  }
+
+  .investment-plan-viz-chart-wrap {
+    height: 200px;
+  }
+
+  .investment-plan-viz-total-amt {
+    font-size: 1.45rem;
+  }
+
+  .investment-plan-viz-notes {
+    max-width: none;
+    width: 100%;
+  }
+
+  .investment-plan-viz-bar-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem 0.65rem;
+  }
+
+  .investment-plan-viz-group-head {
+    flex-wrap: wrap;
+  }
+
+  .investment-plan-viz-group-lines li {
+    gap: 0.35rem 0.5rem;
+  }
+
+  .investment-plan-viz-line-platform {
+    max-width: 5.5rem;
+  }
+
+  .investment-plan-viz-line-amt {
+    font-size: 0.9rem;
+  }
+
+  .portfolio-view-page .balance-sheet-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .investment-plan-row {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-view-page .bs-field-remove {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .investment-plan-viz {
+    padding: 0.75rem;
+  }
+
+  .investment-plan-viz-bar-legend {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-group {
+    flex-direction: column;
+  }
+
+  .filter-group label {
+    width: 100%;
+  }
+
+  .filter-group select {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .investment-plan-latest-item {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .investment-plan-latest-amt {
+    justify-self: start;
+  }
+}
+
 .balance-sheet-chart {
   margin-top: 0.75rem;
   height: 260px;
@@ -2433,13 +3269,98 @@
 .sticky-month-summary {
   position: sticky;
   top: 0;
-  z-index: 40;
+  z-index: 50;
   margin: 0;
   padding: 0.65rem 0.85rem;
   border-radius: 0.65rem;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   box-shadow: var(--card-shadow);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  align-self: flex-start;
+  width: 100%;
+}
+
+[data-theme="light"] .sticky-month-summary {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+[data-theme="dark"] .sticky-month-summary {
+  background: rgba(15, 23, 42, 0.92);
+}
+
+.sticky-month-row-single:last-child .sticky-stat-nw strong {
+  font-size: 0.95rem;
+}
+
+.sticky-month-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.sticky-month-row {
+  display: grid;
+  width: 100%;
+  gap: 0.35rem 0.75rem;
+  align-items: baseline;
+  font-size: 0.8rem;
+}
+
+.sticky-month-row-single {
+  grid-template-columns: 1fr;
+}
+
+.sticky-month-row-pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sticky-month-row-label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.35));
+  margin-bottom: 0.05rem;
+}
+
+.sticky-month-cash-line {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.78rem;
+}
+
+.sticky-cash-sep {
+  color: #64748b;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.sticky-stat-inline {
+  display: inline;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sticky-month-row-single:last-child,
+.sticky-month-row-nw {
+  padding-top: 0.2rem;
+  border-top: 1px solid var(--border-subtle, rgba(55, 65, 81, 0.35));
+}
+
+.sticky-stat {
+  display: block;
+  min-width: 0;
+  line-height: 1.45;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .sticky-month-inner {
@@ -2455,29 +3376,55 @@
   color: #94a3b8;
 }
 
-.sticky-stat em {
+.sticky-stat em,
+.sticky-stat .sticky-pct-of-inflow {
   font-style: normal;
   font-size: 0.68rem;
   color: #64748b;
   margin-left: 0.25rem;
 }
 
+.sticky-change-pct {
+  font-size: 0.65rem;
+  opacity: 0.9;
+}
+
 .sticky-stat-inv strong { color: #22c55e; }
 .sticky-stat-exp strong { color: #ef4444; }
-.sticky-stat-out strong { color: #ef4444; }
+.sticky-stat-in strong { color: #93c5fd; }
 .sticky-stat-nw strong { color: #c4b5fd; }
 .sticky-stat-assets strong { color: #86efac; }
 .sticky-stat-debts strong { color: #fca5a5; }
 
 .sticky-stat-nw em.positive,
-.sticky-stat-assets em.positive { color: #86efac; }
+.sticky-stat-assets em.positive,
+.sticky-stat-in em.positive,
+.sticky-stat-inv em.positive { color: #86efac; }
+
 .sticky-stat-nw em.negative,
-.sticky-stat-assets em.negative { color: #fca5a5; }
+.sticky-stat-assets em.negative,
+.sticky-stat-in em.negative,
+.sticky-stat-inv em.negative { color: #fca5a5; }
+
+.sticky-stat-exp em.positive { color: #86efac; }
+.sticky-stat-exp em.negative { color: #fca5a5; }
 .sticky-stat-debts em.positive { color: #86efac; }
 .sticky-stat-debts em.negative { color: #fca5a5; }
 
 .sticky-stat-rem.positive strong { color: #86efac; }
 .sticky-stat-rem.negative strong { color: #fca5a5; }
+
+@media (max-width: 480px) {
+  .sticky-month-row-label {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .sticky-month-cash-line {
+    justify-content: flex-start;
+    font-size: 0.72rem;
+  }
+}
 
 /* ——— Recurring ——— */
 .recurring-banner {
