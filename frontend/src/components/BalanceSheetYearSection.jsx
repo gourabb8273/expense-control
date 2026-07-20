@@ -16,7 +16,8 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { aggregateByTag } from '../utils/aggregateByTag';
 import { formatSharePct } from '../utils/formatSharePct';
 import CollapsibleChartCard from './CollapsibleChartCard';
-import { lineChartMinWidth } from './LineChartFrame';
+import LineChartFrame from './LineChartFrame';
+import TrendLineWidthToggle from './TrendLineWidthToggle';
 
 ChartJS.register(
   CategoryScale,
@@ -210,9 +211,24 @@ function lineChartValue(row, field) {
 
 const LINE_COLOR_ASSETS = '#22c55e';
 const LINE_COLOR_DEBTS = '#ef4444';
-const LINE_COLOR_NET_WORTH = '#6366f1';
+const LINE_COLOR_NET_WORTH = '#818cf8';
 const LINE_COLOR_CARRIED = '#64748b';
 const LINE_COLOR_CARRIED_FADED = 'rgba(100, 116, 139, 0.45)';
+
+function lineAreaGradient(chart, topColor, bottomColor = 'rgba(0,0,0,0)') {
+  const { ctx, chartArea } = chart;
+  if (!chartArea) return topColor;
+  const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+  gradient.addColorStop(0, topColor);
+  gradient.addColorStop(1, bottomColor);
+  return gradient;
+}
+
+function linePointRadius(status) {
+  if (status === 'empty') return 0;
+  if (status === 'active') return 5;
+  return 3;
+}
 
 function ChartBreakdownList({ items, labelKey, total }) {
   if (!items?.length || !total) return null;
@@ -469,16 +485,20 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
           label: 'Assets',
           data: lineAssetsArr,
           borderColor: LINE_COLOR_ASSETS,
-          backgroundColor: 'rgba(34, 197, 94, 0.08)',
+          backgroundColor: (ctx) =>
+            lineAreaGradient(ctx.chart, 'rgba(34, 197, 94, 0.32)', 'rgba(34, 197, 94, 0)'),
           fill: true,
-          tension: 0.25,
-          pointRadius: (ctx) => (lineMonthStatuses[ctx.dataIndex] === 'empty' ? 0 : 4),
+          tension: 0.35,
+          borderWidth: 2.5,
+          pointRadius: (ctx) => linePointRadius(lineMonthStatuses[ctx.dataIndex]),
+          pointHoverRadius: 7,
+          pointBorderWidth: 2,
           pointBackgroundColor: (ctx) => pointColor(ctx, LINE_COLOR_ASSETS),
-          pointBorderColor: (ctx) => pointColor(ctx, LINE_COLOR_ASSETS),
+          pointBorderColor: '#0f172a',
           segment: {
             borderColor: (ctx) => segmentStyle(ctx, LINE_COLOR_ASSETS),
             borderDash: (ctx) =>
-              lineMonthStatuses[ctx.p1DataIndex] === 'carried' ? [5, 4] : undefined,
+              lineMonthStatuses[ctx.p1DataIndex] === 'carried' ? [6, 4] : undefined,
           },
           spanGaps: false,
         },
@@ -486,16 +506,20 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
           label: 'Debts',
           data: lineDebtsArr,
           borderColor: LINE_COLOR_DEBTS,
-          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          backgroundColor: (ctx) =>
+            lineAreaGradient(ctx.chart, 'rgba(239, 68, 68, 0.22)', 'rgba(239, 68, 68, 0)'),
           fill: true,
-          tension: 0.25,
-          pointRadius: (ctx) => (lineMonthStatuses[ctx.dataIndex] === 'empty' ? 0 : 4),
+          tension: 0.35,
+          borderWidth: 2.5,
+          pointRadius: (ctx) => linePointRadius(lineMonthStatuses[ctx.dataIndex]),
+          pointHoverRadius: 7,
+          pointBorderWidth: 2,
           pointBackgroundColor: (ctx) => pointColor(ctx, LINE_COLOR_DEBTS),
-          pointBorderColor: (ctx) => pointColor(ctx, LINE_COLOR_DEBTS),
+          pointBorderColor: '#0f172a',
           segment: {
             borderColor: (ctx) => segmentStyle(ctx, LINE_COLOR_DEBTS),
             borderDash: (ctx) =>
-              lineMonthStatuses[ctx.p1DataIndex] === 'carried' ? [5, 4] : undefined,
+              lineMonthStatuses[ctx.p1DataIndex] === 'carried' ? [6, 4] : undefined,
           },
           spanGaps: false,
         },
@@ -503,17 +527,20 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
           label: 'Net worth',
           data: lineNetWorthArr,
           borderColor: LINE_COLOR_NET_WORTH,
-          backgroundColor: 'rgba(99, 102, 241, 0.08)',
-          fill: false,
-          tension: 0.25,
-          borderWidth: 2.5,
-          pointRadius: (ctx) => (lineMonthStatuses[ctx.dataIndex] === 'empty' ? 0 : 4),
+          backgroundColor: (ctx) =>
+            lineAreaGradient(ctx.chart, 'rgba(129, 140, 248, 0.18)', 'rgba(129, 140, 248, 0)'),
+          fill: true,
+          tension: 0.35,
+          borderWidth: 3,
+          pointRadius: (ctx) => linePointRadius(lineMonthStatuses[ctx.dataIndex]),
+          pointHoverRadius: 7,
+          pointBorderWidth: 2,
           pointBackgroundColor: (ctx) => pointColor(ctx, LINE_COLOR_NET_WORTH),
-          pointBorderColor: (ctx) => pointColor(ctx, LINE_COLOR_NET_WORTH),
+          pointBorderColor: '#0f172a',
           segment: {
             borderColor: (ctx) => segmentStyle(ctx, LINE_COLOR_NET_WORTH),
             borderDash: (ctx) =>
-              lineMonthStatuses[ctx.p1DataIndex] === 'carried' ? [5, 4] : undefined,
+              lineMonthStatuses[ctx.p1DataIndex] === 'carried' ? [6, 4] : undefined,
           },
           spanGaps: false,
         },
@@ -600,7 +627,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
       if (ctx.datasetIndex === 1) return 'bottom';
       return 'right';
     },
-    offset: (ctx) => (ctx.datasetIndex === 2 ? 8 : 6),
+    offset: (ctx) => (ctx.datasetIndex === 2 ? 6 : 4),
     color: (ctx) =>
       lineMonthStatuses[ctx.dataIndex] === 'carried' ? '#94a3b8' : '#cbd5e1',
     font: { size: 9, weight: '600' },
@@ -659,18 +686,37 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
+      elements: {
+        line: { borderCapStyle: 'round', borderJoinStyle: 'round' },
+        point: { hoverBorderWidth: 3 },
+      },
       layout: {
         padding: {
-          top: isMobile ? 8 : 18,
-          bottom: isMobile ? 8 : 18,
+          top: isMobile ? 6 : 12,
+          bottom: isMobile ? 4 : 8,
           left: isMobile ? 2 : 4,
-          right: isMobile ? 8 : 12,
+          right: isMobile ? 6 : 10,
         },
       },
       plugins: {
         datalabels: isMobile ? { display: false } : datalabelsLine,
-        legend: { position: 'bottom' },
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            pointStyle: 'circle',
+            padding: 14,
+            font: { size: 11, weight: '500' },
+            color: '#cbd5e1',
+          },
+        },
         tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.92)',
+          borderColor: 'rgba(148, 163, 184, 0.25)',
+          borderWidth: 1,
+          padding: 10,
+          titleFont: { size: 12, weight: '600' },
+          bodyFont: { size: 11 },
           callbacks: {
             title: (items) => {
               const idx = items[0]?.dataIndex;
@@ -699,6 +745,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
             font: { size: isMobile ? 10 : 11 },
           },
           grid: { display: false },
+          border: { color: 'rgba(148, 163, 184, 0.12)' },
         },
         y: {
           ticks: {
@@ -707,7 +754,8 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
             font: { size: isMobile ? 10 : 11 },
             callback: (value) => compactInrAxis(value),
           },
-          grid: { color: 'rgba(148, 163, 184, 0.15)' },
+          grid: { color: 'rgba(148, 163, 184, 0.1)' },
+          border: { display: false },
         },
       },
     }),
@@ -810,20 +858,27 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
               )}
             </div>
           )}
-          <h3 className="balance-sheet-year-subtitle">Assets, debts &amp; net worth over months (line)</h3>
-          <p className="muted small balance-sheet-line-legend">
-            Jan–{MONTH_NAMES[getAllChartMonthNumbers(year).slice(-1)[0] || 12]} shown.
-            <span className="legend-dot legend-dot-active" /> Saved month
-            <span className="legend-dot legend-dot-carried" /> Carried / no change (gray)
-            <span className="legend-dot legend-dot-empty" /> No data
-          </p>
-          <div className="chart-line-scroll is-full-width">
-            <div
-              className="balance-sheet-chart balance-sheet-line-chart chart-line-scroll-inner"
-              style={{ minWidth: lineChartMinWidth(lineChartMonthNums.length) }}
+          <div className="balance-sheet-line-trend trend-line-card">
+            <div className="trend-line-header">
+              <div className="balance-sheet-line-trend-head">
+                <h3 className="balance-sheet-year-subtitle balance-sheet-line-trend-title">
+                  Assets, debts &amp; net worth over months
+                </h3>
+                <p className="muted small balance-sheet-line-legend">
+                  Jan–{MONTH_NAMES[getAllChartMonthNumbers(year).slice(-1)[0] || 12]} shown.
+                  <span className="legend-dot legend-dot-active" /> Saved month
+                  <span className="legend-dot legend-dot-carried" /> Carried / no change
+                  <span className="legend-dot legend-dot-empty" /> No data
+                </p>
+              </div>
+              <TrendLineWidthToggle />
+            </div>
+            <LineChartFrame
+              monthCount={lineChartMonthNums.length}
+              className="balance-sheet-chart balance-sheet-line-chart"
             >
               <Line data={lineData} options={lineOptions} />
-            </div>
+            </LineChartFrame>
           </div>
           {tagChartData && (tagChartData.hasAssetTags || tagChartData.hasDebtTags) && (
             <>

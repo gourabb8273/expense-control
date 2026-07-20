@@ -140,6 +140,21 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.portfolio-view-page .content-block {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.dashboard-sections,
+.content-block {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .filter-group {
@@ -275,6 +290,9 @@
   padding: 1rem 1.1rem;
   border: 1px solid var(--card-border);
   box-shadow: var(--card-shadow);
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .export-pdf-row {
@@ -941,7 +959,7 @@
 .yearly-trend-top .chart-wrap-line,
 .balance-sheet-line-chart.chart-line-scroll-inner,
 .balance-sheet-line-chart {
-  height: 280px;
+  height: 220px;
 }
 
 @media (max-width: 640px) {
@@ -954,7 +972,7 @@
   .yearly-trend-top .chart-wrap-line,
   .balance-sheet-line-chart.chart-line-scroll-inner,
   .balance-sheet-line-chart {
-    height: 340px;
+    height: 240px;
   }
 }
 
@@ -1458,6 +1476,10 @@
 .investment-plan-card,
 .investment-plan-year-card {
   margin-top: 0.75rem;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .investment-plan-card-standalone .investment-plan-viz {
@@ -1497,8 +1519,12 @@
 }
 
 .investment-plan-year-embedded-title {
-  margin: 0 0 0.65rem;
+  margin: 0;
   font-size: 1rem;
+}
+
+.investment-plan-year-embedded-head .investment-plan-year-embedded-title {
+  font-size: inherit;
 }
 
 .investment-plan-lines {
@@ -1726,6 +1752,10 @@
   border-radius: 0.75rem;
   border: 1px solid rgba(34, 197, 94, 0.25);
   background: linear-gradient(145deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.06));
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .investment-plan-viz-hero {
@@ -2212,15 +2242,37 @@
   }
 
   .investment-plan-viz-group-lines li {
-    gap: 0.35rem 0.5rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name amt'
+      'platform platform';
+    gap: 0.25rem 0.45rem;
+  }
+
+  .investment-plan-viz-line-name {
+    grid-area: name;
+    white-space: normal;
+    font-size: 0.78rem;
   }
 
   .investment-plan-viz-line-platform {
-    max-width: 5.5rem;
+    grid-area: platform;
+    justify-self: start;
+    max-width: 100%;
+  }
+
+  .investment-plan-viz-line-platform-empty {
+    display: none;
   }
 
   .investment-plan-viz-line-amt {
-    font-size: 0.9rem;
+    grid-area: amt;
+    font-size: 0.78rem;
+    align-items: flex-end;
+  }
+
+  .investment-plan-viz-line-pct {
+    font-size: 0.62rem;
   }
 
   .portfolio-view-page .balance-sheet-row {
@@ -2276,11 +2328,36 @@
 }
 
 .balance-sheet-year-card .chart-line-scroll {
+  margin-top: 0;
+}
+
+.balance-sheet-line-trend {
   margin-top: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--card-border);
+  background: rgba(15, 23, 42, 0.35);
+}
+
+[data-theme="light"] .balance-sheet-line-trend {
+  background: rgba(248, 250, 252, 0.95);
+}
+
+.balance-sheet-line-trend-title {
+  margin: 0 0 0.25rem;
+}
+
+.balance-sheet-line-trend-head {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.balance-sheet-line-trend .balance-sheet-line-legend {
+  margin: 0;
 }
 
 .balance-sheet-line-chart:not(.chart-line-scroll-inner) {
-  height: 280px;
+  height: 220px;
 }
 
 .balance-sheet-tag-charts-note {
@@ -3280,6 +3357,10 @@
   -webkit-backdrop-filter: blur(10px);
   align-self: flex-start;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 [data-theme="light"] .sticky-month-summary {
@@ -3346,7 +3427,8 @@
 .sticky-stat-inline {
   display: inline;
   white-space: nowrap;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .sticky-month-row-single:last-child,
@@ -3414,6 +3496,65 @@
 .sticky-stat-rem.positive strong { color: #86efac; }
 .sticky-stat-rem.negative strong { color: #fca5a5; }
 
+@media (max-width: 640px) {
+  .app-shell {
+    padding: 0.75rem;
+  }
+
+  .card {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .sticky-month-summary {
+    padding: 0.5rem 0.6rem;
+  }
+
+  .sticky-month-row {
+    font-size: 0.72rem;
+    gap: 0.25rem 0.45rem;
+  }
+
+  .sticky-month-row-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .sticky-month-cash-line {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    font-size: 0.68rem;
+    gap: 0.25rem 0.35rem;
+  }
+
+  .sticky-stat-inline {
+    white-space: normal;
+  }
+
+  .sticky-stat strong {
+    font-size: 0.92em;
+  }
+
+  .sticky-stat em {
+    display: inline;
+    font-size: 0.62rem;
+  }
+
+  .sticky-change-pct {
+    display: none;
+  }
+
+  .sticky-month-row-single:last-child .sticky-stat-nw strong {
+    font-size: 0.85rem;
+  }
+
+  .investment-plan-viz {
+    padding: 0.65rem 0.55rem;
+  }
+
+  .investment-plan-viz-total-amt {
+    font-size: 1.25rem;
+  }
+}
+
 @media (max-width: 480px) {
   .sticky-month-row-label {
     grid-template-columns: 1fr;
@@ -3422,7 +3563,11 @@
 
   .sticky-month-cash-line {
     justify-content: flex-start;
-    font-size: 0.72rem;
+    font-size: 0.65rem;
+  }
+
+  .investment-plan-viz-bar-legend {
+    grid-template-columns: 1fr;
   }
 }
 

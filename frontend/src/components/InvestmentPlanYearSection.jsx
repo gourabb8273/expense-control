@@ -34,7 +34,7 @@ function getMonthsWithPlans(year, byMonth) {
 export default function InvestmentPlanYearSection({ year, refreshKey = 0, embedded = false }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(!embedded);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,20 +79,36 @@ export default function InvestmentPlanYearSection({ year, refreshKey = 0, embedd
 
   if (loading) {
     return (
-      <div className="card investment-plan-year-card">
-        <div className="balance-sheet-header">
-          <button
-            type="button"
-            className="section-header-toggle"
-            onClick={() => setExpanded((v) => !v)}
-            aria-expanded={expanded}
-          >
-            <span className="section-header-chevron" aria-hidden="true">
-              {expanded ? '▾' : '▸'}
-            </span>
-            <h2>Portfolio plan · {year}</h2>
-          </button>
-        </div>
+      <div className={`card investment-plan-year-card${embedded ? ' investment-plan-year-embedded' : ''}`}>
+        {embedded ? (
+          <div className="balance-sheet-header investment-plan-year-embedded-head">
+            <button
+              type="button"
+              className="section-header-toggle"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+            >
+              <span className="section-header-chevron" aria-hidden="true">
+                {expanded ? '▾' : '▸'}
+              </span>
+              <h2 className="investment-plan-year-embedded-title">Year overview · {year}</h2>
+            </button>
+          </div>
+        ) : (
+          <div className="balance-sheet-header">
+            <button
+              type="button"
+              className="section-header-toggle"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+            >
+              <span className="section-header-chevron" aria-hidden="true">
+                {expanded ? '▾' : '▸'}
+              </span>
+              <h2>Portfolio plan · {year}</h2>
+            </button>
+          </div>
+        )}
         {expanded && <p className="muted small">Loading…</p>}
       </div>
     );
@@ -122,10 +138,27 @@ export default function InvestmentPlanYearSection({ year, refreshKey = 0, embedd
       )}
 
       {embedded && (
-        <h2 className="investment-plan-year-embedded-title">Year overview · {year}</h2>
+        <div className="balance-sheet-header investment-plan-year-embedded-head">
+          <button
+            type="button"
+            className="section-header-toggle"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+          >
+            <span className="section-header-chevron" aria-hidden="true">
+              {expanded ? '▾' : '▸'}
+            </span>
+            <h2 className="investment-plan-year-embedded-title">Year overview · {year}</h2>
+            {!expanded && latestRow && (
+              <span className="pill section-header-summary">
+                {MONTH_NAMES[latestPlanMonth]} · ₹{Number(latestRow.total || 0).toLocaleString('en-IN')}
+              </span>
+            )}
+          </button>
+        </div>
       )}
 
-      {(embedded || expanded) && (
+      {expanded && (
         <>
           <p className="muted small">
             Latest portfolio plan as of the most recent month (carries forward from last save). Edit in Month view.
