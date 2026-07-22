@@ -31,7 +31,10 @@ function getMonthsWithPlans(year, byMonth) {
   return months;
 }
 
+import { useFormatMoney } from '../utils/formatMoney';
+
 export default function InvestmentPlanYearSection({ year, refreshKey = 0, embedded = false }) {
+  const { inr } = useFormatMoney();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(!embedded);
@@ -130,7 +133,7 @@ export default function InvestmentPlanYearSection({ year, refreshKey = 0, embedd
           <h2>Portfolio plan · {year}</h2>
           {!expanded && latestRow && (
             <span className="pill section-header-summary">
-              {MONTH_NAMES[latestPlanMonth]} · ₹{Number(latestRow.total || 0).toLocaleString('en-IN')}
+              {MONTH_NAMES[latestPlanMonth]} · {inr(Number(latestRow.total || 0))}
             </span>
           )}
         </button>
@@ -151,7 +154,7 @@ export default function InvestmentPlanYearSection({ year, refreshKey = 0, embedd
             <h2 className="investment-plan-year-embedded-title">Year overview · {year}</h2>
             {!expanded && latestRow && (
               <span className="pill section-header-summary">
-                {MONTH_NAMES[latestPlanMonth]} · ₹{Number(latestRow.total || 0).toLocaleString('en-IN')}
+                {MONTH_NAMES[latestPlanMonth]} · {inr(Number(latestRow.total || 0))}
               </span>
             )}
           </button>
@@ -197,7 +200,7 @@ export default function InvestmentPlanYearSection({ year, refreshKey = 0, embedd
                           {label}
                           {!saved && <em className="investment-plan-month-carried"> carried</em>}
                         </span>
-                        <strong>₹{total.toLocaleString('en-IN')}</strong>
+                        <strong>{inr(total)}</strong>
                       </li>
                     ))}
                   </ul>

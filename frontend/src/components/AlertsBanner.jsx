@@ -1,3 +1,5 @@
+import { formatInr } from '../utils/formatMoney';
+
 export default function AlertsBanner({ alerts = [] }) {
   if (!alerts.length) return null;
 
@@ -25,6 +27,7 @@ export function buildMonthAlerts({
   pendingRecurringCount,
   untaggedExpenseAmount,
   netWorthDown,
+  hideAmounts = false,
 }) {
   const alerts = [];
 
@@ -32,7 +35,7 @@ export function buildMonthAlerts({
     alerts.push({
       id: 'over-spent',
       severity: 'warning',
-      message: `Spending exceeds inflow by ₹${Math.abs(remaining).toLocaleString('en-IN')} this month.`,
+      message: `Spending exceeds inflow by ${formatInr(Math.abs(remaining), hideAmounts)} this month.`,
     });
   } else if (inflow > 0 && expense > inflow) {
     alerts.push({
@@ -70,7 +73,7 @@ export function buildMonthAlerts({
     alerts.push({
       id: 'untagged',
       severity: 'info',
-      message: `₹${untaggedExpenseAmount.toLocaleString('en-IN')} in expenses has no tag.`,
+      message: `${formatInr(untaggedExpenseAmount, hideAmounts)} in expenses has no tag.`,
     });
   }
 
@@ -78,7 +81,7 @@ export function buildMonthAlerts({
     alerts.push({
       id: 'healthy',
       severity: 'success',
-      message: `₹${remaining.toLocaleString('en-IN')} left after investments and expenses.`,
+      message: `${formatInr(remaining, hideAmounts)} left after investments and expenses.`,
     });
   }
 

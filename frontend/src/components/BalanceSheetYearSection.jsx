@@ -15,6 +15,7 @@ import {
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { aggregateByTag } from '../utils/aggregateByTag';
 import { formatSharePct } from '../utils/formatSharePct';
+import { useFormatMoney } from '../utils/formatMoney';
 import CollapsibleChartCard from './CollapsibleChartCard';
 import LineChartFrame from './LineChartFrame';
 import TrendLineWidthToggle from './TrendLineWidthToggle';
@@ -51,17 +52,6 @@ function useIsMobile(maxWidth = 640) {
   return isMobile;
 }
 
-/** Rupee ticks short on axis; full amounts in tooltip. */
-function compactInrAxis(value) {
-  const n = Math.abs(Number(value) || 0);
-  const sign = Number(value) < 0 ? '-' : '';
-  if (n >= 1e7) return `${sign}₹${(n / 1e7).toFixed(1)}Cr`;
-  if (n >= 1e5) return `${sign}₹${(n / 1e5).toFixed(1)}L`;
-  if (n >= 1e3) return `${sign}₹${(n / 1e3).toFixed(0)}k`;
-  if (n === 0) return '₹0';
-  return `${sign}₹${Math.round(n)}`;
-}
-
 /** Compare to previous calendar month in the same year (Jan has no in-year prior). */
 function getPrevMonthRow(byMonth, monthNum) {
   if (monthNum <= 1) return null;
@@ -74,6 +64,7 @@ function getPrevMonthLabel(monthNum) {
 }
 
 function ChangeVsPrevSub({ prevVal, currVal, kind, prevLabel }) {
+  const { hideAmounts, mask, inr } = useFormatMoney();
   if (!prevLabel) {
     return <span className="bs-vs-prev bs-vs-neutral">First month (Jan)</span>;
   }
@@ -84,7 +75,7 @@ function ChangeVsPrevSub({ prevVal, currVal, kind, prevLabel }) {
   if (prev === 0 && curr !== 0) {
     return (
       <span className="bs-vs-prev bs-vs-neutral">
-        New this month ({prevLabel} was ₹0)
+        New this month ({prevLabel} was {inr(0)})
       </span>
     );
   }
@@ -104,13 +95,13 @@ function ChangeVsPrevSub({ prevVal, currVal, kind, prevLabel }) {
   }
 
   const arrow = diff > 0 ? '↑' : '↓';
-  const absAmt = `₹${Math.abs(diff).toLocaleString('en-IN')}`;
+  const absAmt = hideAmounts ? mask : inr(Math.abs(diff));
   const pctPart = pct != null ? ` (${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%)` : '';
 
   return (
     <span
       className={`bs-vs-prev ${cls}`}
-      title={`${prevLabel}: ₹${prev.toLocaleString('en-IN')} → ₹${curr.toLocaleString('en-IN')}`}
+      title={`${prevLabel}: ${inr(prev)} → ${inr(curr)}`}
     >
       {arrow} {absAmt}
       {pctPart} vs {prevLabel}
@@ -119,6 +110,7 @@ function ChangeVsPrevSub({ prevVal, currVal, kind, prevLabel }) {
 }
 
 function LatestSnapshot({ monthLabel, year, row, prevRow, prevMonthLabel }) {
+  const { inr } = useFormatMoney();
   const ta = Number(row.totalAssets) || 0;
   const td = Number(row.totalDebts) || 0;
   const nw = Number(row.netWorth) || 0;
@@ -131,7 +123,7 @@ function LatestSnapshot({ monthLabel, year, row, prevRow, prevMonthLabel }) {
       <div className="bs-latest-grid">
         <div className="bs-latest-stat bs-latest-stat-assets">
           <span className="bs-latest-stat-label">Assets</span>
-          <span className="bs-latest-stat-amt">₹{ta.toLocaleString('en-IN')}</span>
+          <span className="bs-latest-stat-amt">{inr(ta)}</span>
           {prevRow && (
             <ChangeVsPrevSub
               prevVal={prevRow.totalAssets}
@@ -143,7 +135,7 @@ function LatestSnapshot({ monthLabel, year, row, prevRow, prevMonthLabel }) {
         </div>
         <div className="bs-latest-stat bs-latest-stat-debts">
           <span className="bs-latest-stat-label">Debts</span>
-          <span className="bs-latest-stat-amt">₹{td.toLocaleString('en-IN')}</span>
+          <span className="bs-latest-stat-amt">{inr(td)}</span>
           {prevRow && (
             <ChangeVsPrevSub
               prevVal={prevRow.totalDebts}
@@ -155,7 +147,7 @@ function LatestSnapshot({ monthLabel, year, row, prevRow, prevMonthLabel }) {
         </div>
         <div className={`bs-latest-stat bs-latest-stat-nw ${nw >= 0 ? 'positive' : 'negative'}`}>
           <span className="bs-latest-stat-label">Net worth</span>
-          <span className="bs-latest-stat-amt">₹{nw.toLocaleString('en-IN')}</span>
+          <span className="bs-latest-stat-amt">{inr(nw)}</span>
           {prevRow && (
             <ChangeVsPrevSub
               prevVal={prevRow.netWorth}
@@ -250,6 +242,7 @@ function BalanceSheetSeriesLegend() {
 }
 
 function ChartBreakdownList({ items, labelKey, total }) {
+  const { inr } = useFormatMoney();
   if (!items?.length || !total) return null;
   return (
     <div className="chart-list-wrapper">
@@ -261,7 +254,7 @@ function ChartBreakdownList({ items, labelKey, total }) {
             <li key={item[labelKey]} className="chart-list-row">
               <span className="chart-list-label">{item[labelKey]}</span>
               <span className="chart-list-value">
-                ₹{value.toLocaleString('en-IN')} ({pct}%)
+                {inr(value)} ({pct}%)
               </span>
             </li>
           );
@@ -281,25 +274,6 @@ function buildTagPie(rows) {
     }],
   };
 }
-
-const tagPieOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: { position: 'bottom' },
-    datalabels: { display: false },
-    tooltip: {
-      callbacks: {
-        label: (ctx) => {
-          const v = ctx.raw || 0;
-          const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
-          const pct = formatSharePct(v, total);
-          return `₹${Number(v).toLocaleString('en-IN')} (${pct}%)`;
-        },
-      },
-    },
-  },
-};
 
 function lineItemsForMonth(byMonth, field, monthNum) {
   const lines = byMonth[monthNum]?.[field] || [];
@@ -341,6 +315,7 @@ function buildMixPiesByMonth(byMonth, field, monthNums, colorPalette) {
 }
 
 function BalanceSheetYearSection({ year, refreshKey = 0 }) {
+  const { inr, signed, compact, chartLabel, hideAmounts } = useFormatMoney();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(true);
@@ -616,89 +591,123 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
   );
 
   /** Visible on chart (not only tooltip): compact ₹ above each bar. */
-  const datalabelsGroupedBar = {
-    display: (ctx) => {
-      const v = ctx.parsed?.y;
-      return v != null && Math.abs(Number(v)) >= 1;
-    },
-    anchor: 'end',
-    align: 'top',
-    offset: 4,
-    color: '#e2e8f0',
-    font: { size: 9, weight: '600' },
-    formatter: (v) => compactInrAxis(v),
-  };
+  const datalabelsGroupedBar = useMemo(
+    () => ({
+      display: (ctx) => {
+        const v = ctx.parsed?.y;
+        return v != null && Math.abs(Number(v)) >= 1;
+      },
+      anchor: 'end',
+      align: 'top',
+      offset: 4,
+      color: '#e2e8f0',
+      font: { size: 9, weight: '600' },
+      formatter: (v) => compact(v),
+    }),
+    [compact, hideAmounts]
+  );
 
   /** Line points: ₹ labels; skip empty months; gray for carried. */
-  const datalabelsLine = {
-    display: (ctx) => {
-      const v = ctx.raw;
-      const status = lineMonthStatuses[ctx.dataIndex];
-      return v != null && status !== 'empty' && Math.abs(Number(v)) >= 1;
-    },
-    anchor: (ctx) => {
-      if (ctx.datasetIndex === 0) return 'end';
-      if (ctx.datasetIndex === 1) return 'start';
-      return 'center';
-    },
-    align: (ctx) => {
-      if (ctx.datasetIndex === 0) return 'top';
-      if (ctx.datasetIndex === 1) return 'bottom';
-      return 'right';
-    },
-    offset: (ctx) => (ctx.datasetIndex === 2 ? 6 : 4),
-    color: (ctx) =>
-      lineMonthStatuses[ctx.dataIndex] === 'carried' ? '#94a3b8' : '#cbd5e1',
-    font: { size: 9, weight: '600' },
-    formatter: (v) => compactInrAxis(v),
-  };
+  const datalabelsLine = useMemo(
+    () => ({
+      display: (ctx) => {
+        const v = ctx.raw;
+        const status = lineMonthStatuses[ctx.dataIndex];
+        return v != null && status !== 'empty' && Math.abs(Number(v)) >= 1;
+      },
+      anchor: (ctx) => {
+        if (ctx.datasetIndex === 0) return 'end';
+        if (ctx.datasetIndex === 1) return 'start';
+        return 'center';
+      },
+      align: (ctx) => {
+        if (ctx.datasetIndex === 0) return 'top';
+        if (ctx.datasetIndex === 1) return 'bottom';
+        return 'right';
+      },
+      offset: (ctx) => (ctx.datasetIndex === 2 ? 6 : 4),
+      color: (ctx) =>
+        lineMonthStatuses[ctx.dataIndex] === 'carried' ? '#94a3b8' : '#cbd5e1',
+      font: { size: 9, weight: '600' },
+      formatter: (v) => compact(v),
+    }),
+    [compact, hideAmounts, lineMonthStatuses]
+  );
 
-  const axisTooltipCurrency = {
-    plugins: {
-      legend: { position: 'bottom' },
-      tooltip: {
-        callbacks: {
-          label: (ctx) => {
-            const v = ctx.raw;
-            if (ctx.dataset.label && ctx.dataset.stack === undefined && typeof v === 'number') {
-              return `${ctx.dataset.label}: ₹${Number(v).toLocaleString('en-IN')}`;
-            }
-            return undefined;
+  const axisTooltipCurrency = useMemo(
+    () => ({
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.raw;
+              if (ctx.dataset.label && ctx.dataset.stack === undefined && typeof v === 'number') {
+                return `${ctx.dataset.label}: ${chartLabel(v)}`;
+              }
+              return undefined;
+            },
           },
         },
       },
-    },
-    scales: {
-      x: {
-        ticks: {
-          color: '#9ca3af',
-          maxRotation: 0,
-          autoSkip: true,
-          maxTicksLimit: 24,
+      scales: {
+        x: {
+          ticks: {
+            color: '#9ca3af',
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 24,
+          },
+          grid: { display: false },
         },
-        grid: { display: false },
-      },
-      y: {
-        ticks: {
-          color: '#9ca3af',
-          maxTicksLimit: 6,
-          callback: (value) => compactInrAxis(value),
+        y: {
+          ticks: {
+            color: '#9ca3af',
+            maxTicksLimit: 6,
+            callback: (value) => compact(value),
+          },
+          grid: { color: 'rgba(148, 163, 184, 0.15)' },
         },
-        grid: { color: 'rgba(148, 163, 184, 0.15)' },
       },
-    },
-  };
+    }),
+    [compact, chartLabel, hideAmounts]
+  );
 
-  const chartOptionsGrouped = {
-    responsive: true,
-    maintainAspectRatio: false,
-    layout: { padding: { top: 22 } },
-    ...axisTooltipCurrency,
-    plugins: {
-      ...axisTooltipCurrency.plugins,
-      datalabels: datalabelsGroupedBar,
-    },
-  };
+  const chartOptionsGrouped = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 22 } },
+      ...axisTooltipCurrency,
+      plugins: {
+        ...axisTooltipCurrency.plugins,
+        datalabels: datalabelsGroupedBar,
+      },
+    }),
+    [axisTooltipCurrency, datalabelsGroupedBar]
+  );
+
+  const tagPieOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        datalabels: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.raw || 0;
+              const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
+              const pct = formatSharePct(v, total);
+              return `${chartLabel(v)} (${pct}%)`;
+            },
+          },
+        },
+      },
+    }),
+    [chartLabel, hideAmounts]
+  );
 
   const lineOptions = useMemo(
     () => ({
@@ -741,7 +750,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
             label: (ctx) => {
               const v = ctx.raw;
               if (v == null) return undefined;
-              return `${ctx.dataset.label}: ₹${Number(v).toLocaleString('en-IN')}`;
+              return `${ctx.dataset.label}: ${chartLabel(v)}`;
             },
           },
         },
@@ -764,14 +773,14 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
             color: '#9ca3af',
             maxTicksLimit: isMobile ? 5 : 6,
             font: { size: isMobile ? 10 : 11 },
-            callback: (value) => compactInrAxis(value),
+            callback: (value) => compact(value),
           },
           grid: { color: 'rgba(148, 163, 184, 0.1)' },
           border: { display: false },
         },
       },
     }),
-    [lineMonthStatuses, datalabelsLine, isMobile]
+    [lineMonthStatuses, datalabelsLine, isMobile, compact, chartLabel, hideAmounts]
   );
 
   if (loading || !data) {
@@ -817,7 +826,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
           <h2>Balance sheet · {year}</h2>
           {!expanded && lastRow && (
             <span className="pill section-header-summary">
-              Net ₹{Number(lastRow.netWorth || 0).toLocaleString('en-IN')}
+              Net {inr(Number(lastRow.netWorth || 0))}
             </span>
           )}
         </button>
@@ -837,10 +846,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
             <div className="balance-sheet-growth">
               <p className="muted small">
                 Net worth change (shown months):{' '}
-                <strong>
-                  {growthSummary.totalChange >= 0 ? '+' : '-'}₹
-                  {Math.abs(growthSummary.totalChange).toLocaleString()}
-                </strong>
+                <strong>{signed(growthSummary.totalChange)}</strong>
                 {growthSummary.totalPct != null && (
                   <>
                     {' '}
@@ -854,10 +860,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
                 <p className="muted small">
                   Last vs previous in view ({growthSummary.monthChange.fromLabel} →{' '}
                   {growthSummary.monthChange.toLabel}):{' '}
-                  <strong>
-                    {growthSummary.monthChange.diff >= 0 ? '+' : '-'}₹
-                    {Math.abs(growthSummary.monthChange.diff).toLocaleString()}
-                  </strong>
+                  <strong>{signed(growthSummary.monthChange.diff)}</strong>
                   {growthSummary.monthChange.pct != null && (
                     <>
                       {' '}
@@ -906,7 +909,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
                       <Pie data={buildTagPie(tagChartData.assetsByTag)} options={tagPieOptions} />
                     </div>
                     <p className="chart-total">
-                      Total: ₹{tagChartData.totalAssets.toLocaleString('en-IN')}
+                      Total: {inr(tagChartData.totalAssets)}
                     </p>
                     <ChartBreakdownList
                       items={tagChartData.assetsByTag}
@@ -925,7 +928,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
                       />
                     </div>
                     <p className="chart-total">
-                      Total: ₹{tagChartData.totalDebts.toLocaleString('en-IN')}
+                      Total: {inr(tagChartData.totalDebts)}
                     </p>
                     <ChartBreakdownList
                       items={tagChartData.debtsByTag}
@@ -956,7 +959,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
                   <div className="balance-sheet-chart-wrap">
                     <Pie data={m.pie} options={tagPieOptions} />
                   </div>
-                  <p className="chart-total">Total: ₹{m.total.toLocaleString('en-IN')}</p>
+                  <p className="chart-total">Total: {inr(m.total)}</p>
                   <ChartBreakdownList items={m.items} labelKey="name" total={m.total} />
                 </div>
               ))}
@@ -978,7 +981,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
                     <div className="balance-sheet-chart-wrap">
                       <Pie data={m.pie} options={tagPieOptions} />
                     </div>
-                    <p className="chart-total">Total: ₹{m.total.toLocaleString('en-IN')}</p>
+                    <p className="chart-total">Total: {inr(m.total)}</p>
                     <ChartBreakdownList items={m.items} labelKey="name" total={m.total} />
                   </div>
                 ))}
@@ -1038,7 +1041,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
                         </span>
                       </td>
                       <td className="balance-sheet-has-sub">
-                        <div className="balance-sheet-main-amt">₹{ta.toLocaleString('en-IN')}</div>
+                        <div className="balance-sheet-main-amt">{inr(ta)}</div>
                         <ChangeVsPrevSub
                           prevVal={prev?.totalAssets}
                           currVal={ta}
@@ -1047,7 +1050,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
                         />
                       </td>
                       <td className="balance-sheet-debt-cell balance-sheet-has-sub">
-                        <div className="balance-sheet-main-amt">₹{td.toLocaleString('en-IN')}</div>
+                        <div className="balance-sheet-main-amt">{inr(td)}</div>
                         <ChangeVsPrevSub
                           prevVal={prev?.totalDebts}
                           currVal={td}
@@ -1056,7 +1059,7 @@ function BalanceSheetYearSection({ year, refreshKey = 0 }) {
                         />
                       </td>
                       <td className={`balance-sheet-has-sub ${nw >= 0 ? 'positive' : 'negative'}`}>
-                        <div className="balance-sheet-main-amt">₹{nw.toLocaleString('en-IN')}</div>
+                        <div className="balance-sheet-main-amt">{inr(nw)}</div>
                         <ChangeVsPrevSub
                           prevVal={prev?.netWorth}
                           currVal={nw}

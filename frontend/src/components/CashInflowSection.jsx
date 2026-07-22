@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToast } from '../context/ToastContext';
 import { api } from '../services/api';
 
+import { useFormatMoney } from '../utils/formatMoney';
+
 function resolveLoadedInflows(data) {
   const fromApi = data?.inflows;
   if (Array.isArray(fromApi) && fromApi.length > 0) {
@@ -31,6 +33,7 @@ function orderInflowsForSave(rows) {
 
 export default function CashInflowSection({ year, month, onTotalChange, onSaved }) {
   const toast = useToast();
+  const { inr } = useFormatMoney();
   const [inflows, setInflows] = useState([{ label: 'Salary', amount: 0, kind: 'salary' }]);
   const [carryForwardInfo, setCarryForwardInfo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -196,7 +199,7 @@ export default function CashInflowSection({ year, month, onTotalChange, onSaved 
                 {carryForwardInfo?.available > 0 && (
                   <span className="carry-forward-amount">
                     {' '}
-                    (₹{Number(carryForwardInfo.available).toLocaleString('en-IN')} available)
+                    ({inr(carryForwardInfo.available)} available)
                   </span>
                 )}
               </>
@@ -205,7 +208,7 @@ export default function CashInflowSection({ year, month, onTotalChange, onSaved 
                 Carry forward leftover from {carryForwardInfo?.prevMonthLabel}
                 <span className="carry-forward-amount">
                   {' '}
-                  — ₹{Number(carryForwardInfo.available).toLocaleString('en-IN')}
+                  — {inr(carryForwardInfo.available)}
                 </span>
               </>
             )}
@@ -268,7 +271,7 @@ export default function CashInflowSection({ year, month, onTotalChange, onSaved 
         </button>
         <div className="inflow-total">
           <span className="inflow-total-label">Total inflow</span>
-          <strong className="inflow-total-value">₹{total.toLocaleString('en-IN')}</strong>
+          <strong className="inflow-total-value">{inr(total)}</strong>
           {saving && <span className="inflow-save-status muted">Saving…</span>}
           {!saving && savedAt && (
             <span className="inflow-save-status muted">Saved</span>

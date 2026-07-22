@@ -12,6 +12,8 @@ import {
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { api } from '../services/api';
 import CollapsibleChartCard from './CollapsibleChartCard';
+import ChartTotal from './ChartTotal';
+import { useFormatMoney } from '../utils/formatMoney';
 
 ChartJS.register(
   ArcElement,
@@ -26,24 +28,12 @@ ChartJS.register(
 const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const PIE_COLORS = ['#22c55e', '#3b82f6', '#f97316', '#a855f7', '#ec4899', '#eab308', '#0ea5e9', '#14b8a6'];
 
-function formatAmount(n) {
-  return `₹${Number(n).toLocaleString('en-IN')}`;
-}
-
 function inflowTotal(inflows) {
   return (inflows || []).reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
 }
 
-function ChartTotal({ amount, label = 'Total' }) {
-  if (amount == null || Number(amount) === 0) return null;
-  return (
-    <p className="chart-total">
-      {label}: {formatAmount(Number(amount))}
-    </p>
-  );
-}
-
 function InflowBreakdownList({ sources, total }) {
+  const { inr } = useFormatMoney();
   if (!sources?.length || !total) return null;
   return (
     <div className="chart-list-wrapper">
@@ -55,7 +45,7 @@ function InflowBreakdownList({ sources, total }) {
             <li key={row.label} className="chart-list-row">
               <span className="chart-list-label">{row.label}</span>
               <span className="chart-list-value">
-                {formatAmount(value)} ({pct}%)
+                {inr(value)} ({pct}%)
               </span>
             </li>
           );
@@ -80,6 +70,7 @@ function buildPieFromSources(sources) {
 }
 
 function MonthlyCashInflowCharts({ inflows = [], year, month }) {
+  const { inr, hideAmounts } = useFormatMoney();
   const sources = useMemo(() => {
     const rows = (inflows || []).filter((r) => (Number(r.amount) || 0) > 0);
     return rows.map((r) => ({
@@ -89,30 +80,34 @@ function MonthlyCashInflowCharts({ inflows = [], year, month }) {
   }, [inflows]);
 
   const total = inflowTotal(sources);
+
+  const pieOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        datalabels: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.raw || 0;
+              const sum = ctx.dataset.data.reduce((s, x) => s + x, 0);
+              const pct = sum ? Math.round((v / sum) * 100) : 0;
+              return `${inr(v)} (${pct}%)`;
+            },
+          },
+        },
+      },
+    }),
+    [inr, hideAmounts]
+  );
+
   if (total <= 0) return null;
 
   const pieData = buildPieFromSources(sources);
   const monthLabel = MONTH_NAMES[month] || month;
   const title = `Cash inflow by source · ${monthLabel} ${year}`;
-
-  const pieOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { position: 'bottom' },
-      datalabels: { display: false },
-      tooltip: {
-        callbacks: {
-          label: (ctx) => {
-            const v = ctx.raw || 0;
-            const sum = ctx.dataset.data.reduce((s, x) => s + x, 0);
-            const pct = sum ? Math.round((v / sum) * 100) : 0;
-            return `${formatAmount(v)} (${pct}%)`;
-          },
-        },
-      },
-    },
-  };
 
   return (
     <div className="charts-section cash-inflow-charts">
@@ -130,6 +125,7 @@ function MonthlyCashInflowCharts({ inflows = [], year, month }) {
 }
 
 function YearlyCashInflowCharts({ year, refreshKey = 0 }) {
+  const { inr, compact, chartLabel, hideAmounts } = useFormatMoney();
   const [breakdown, setBreakdown] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -191,7 +187,7 @@ function YearlyCashInflowCharts({ year, refreshKey = 0 }) {
         datalabels: { display: false },
         tooltip: {
           callbacks: {
-            label: (ctx) => `${ctx.dataset.label}: ${formatAmount(ctx.raw || 0)}`,
+            label: (ctx) => `${ctx.dataset.label}: ${chartLabel(ctx.raw || 0)}`,
           },
         },
       },
@@ -200,12 +196,7 @@ function YearlyCashInflowCharts({ year, refreshKey = 0 }) {
         y: {
           stacked: true,
           ticks: {
-            callback: (v) => {
-              const n = Number(v) || 0;
-              if (n >= 1e5) return `₹${(n / 1e5).toFixed(1)}L`;
-              if (n >= 1e3) return `₹${(n / 1e3).toFixed(0)}k`;
-              return `₹${n}`;
-            },
+            callback: (v) => compact(v),
           },
         },
       },
@@ -218,7 +209,28 @@ function YearlyCashInflowCharts({ year, refreshKey = 0 }) {
       yearTotal: yearSum,
       hasData: true,
     };
-  }, [breakdown]);
+  }, [breakdown, compact, chartLabel, hideAmounts]);
+
+  const pieOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        datalabels: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.raw || 0;
+              const pct = yearTotal ? Math.round((v / yearTotal) * 100) : 0;
+              return `${inr(v)} (${pct}%)`;
+            },
+          },
+        },
+      },
+    }),
+    [inr, yearTotal, hideAmounts]
+  );
 
   if (loading) {
     return (
@@ -232,23 +244,6 @@ function YearlyCashInflowCharts({ year, refreshKey = 0 }) {
 
   const pieData = buildPieFromSources(bySource);
   const pieTitle = `Year cash inflow by source · ${year}`;
-  const pieOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { position: 'bottom' },
-      datalabels: { display: false },
-      tooltip: {
-        callbacks: {
-          label: (ctx) => {
-            const v = ctx.raw || 0;
-            const pct = yearTotal ? Math.round((v / yearTotal) * 100) : 0;
-            return `${formatAmount(v)} (${pct}%)`;
-          },
-        },
-      },
-    },
-  };
 
   return (
     <div className="charts-section cash-inflow-charts yearly-cash-inflow-charts">

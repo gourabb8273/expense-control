@@ -8,6 +8,7 @@ import {
   clonePlanItems,
 } from '../utils/investmentPlanTemplate';
 import InvestmentPlanVisualization from './InvestmentPlanVisualization';
+import { useFormatMoney } from '../utils/formatMoney';
 
 const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -125,6 +126,7 @@ export default function InvestmentPlanSection({
   onSaved,
   standalone = false,
 }) {
+  const { inr, hideAmounts } = useFormatMoney();
   const [items, setItems] = useState([]);
   const [notes, setNotes] = useState('');
   const [carriedFrom, setCarriedFrom] = useState(null);
@@ -267,7 +269,7 @@ export default function InvestmentPlanSection({
             <h2>Portfolio plan · {monthLabel} {year}</h2>
             {!expanded && totalPlanned > 0 && (
               <span className="pill section-header-summary">
-                ₹{totalPlanned.toLocaleString('en-IN')}
+                {inr(totalPlanned)}
               </span>
             )}
           </button>
@@ -276,7 +278,7 @@ export default function InvestmentPlanSection({
             <h2>{monthLabel} {year}</h2>
             {totalPlanned > 0 && (
               <span className="pill section-header-summary">
-                ₹{totalPlanned.toLocaleString('en-IN')} planned
+                {inr(totalPlanned)} planned
               </span>
             )}
           </div>
@@ -309,7 +311,7 @@ export default function InvestmentPlanSection({
 
           {standalone && !saved && !carriedFrom && totalPlanned > 0 && (
             <p className="investment-plan-bootstrap-note muted small">
-              Starting template loaded (₹90k split). Save to set this as your portfolio — future months will carry it forward.
+              Starting template loaded ({hideAmounts ? '** split' : '₹90k split'}). Save to set this as your portfolio — future months will carry it forward.
             </p>
           )}
 
@@ -393,7 +395,7 @@ export default function InvestmentPlanSection({
                     <div className="balance-sheet-total investment-plan-total">
                       <span>Total planned</span>
                       <strong className="investment-plan-total-amt">
-                        ₹{totalPlanned.toLocaleString('en-IN')}
+                        {inr(totalPlanned)}
                       </strong>
                     </div>
 

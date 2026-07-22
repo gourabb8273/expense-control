@@ -9,6 +9,7 @@ import {
 import { api } from '../services/api';
 import { aggregateByTag } from '../utils/aggregateByTag';
 import { formatSharePct } from '../utils/formatSharePct';
+import { useFormatMoney } from '../utils/formatMoney';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -109,6 +110,7 @@ function BalanceSheetLineRow({
 }
 
 function ChartBreakdownList({ items, labelKey, total }) {
+  const { inr } = useFormatMoney();
   if (!items?.length || !total) return null;
   return (
     <div className="chart-list-wrapper">
@@ -120,7 +122,7 @@ function ChartBreakdownList({ items, labelKey, total }) {
             <li key={item[labelKey]} className="chart-list-row">
               <span className="chart-list-label">{item[labelKey]}</span>
               <span className="chart-list-value">
-                ₹{value.toLocaleString('en-IN')} ({pct}%)
+                {inr(value)} ({pct}%)
               </span>
             </li>
           );
@@ -131,6 +133,7 @@ function ChartBreakdownList({ items, labelKey, total }) {
 }
 
 function BalanceSheetSection({ year, month, onSaved, onMetaChange, tagsRefreshKey = 0 }) {
+  const { inr, chartLabel, hideAmounts } = useFormatMoney();
   const [assets, setAssets] = useState([]);
   const [debts, setDebts] = useState([]);
   const [assetTags, setAssetTags] = useState([]);
@@ -223,24 +226,27 @@ function BalanceSheetSection({ year, month, onSaved, onMetaChange, tagsRefreshKe
     }],
   });
 
-  const pieOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { position: 'bottom' },
-      datalabels: { display: false },
-      tooltip: {
-        callbacks: {
-          label: (ctx) => {
-            const v = ctx.raw || 0;
-            const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
-            const pct = formatSharePct(v, total);
-            return `₹${Number(v).toLocaleString('en-IN')} (${pct}%)`;
+  const pieOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        datalabels: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.raw || 0;
+              const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
+              const pct = formatSharePct(v, total);
+              return `${chartLabel(v)} (${pct}%)`;
+            },
           },
         },
       },
-    },
-  };
+    }),
+    [chartLabel, hideAmounts]
+  );
 
   const addAsset = () => setAssets([...assets, { name: '', value: 0, tag: '' }]);
   const addDebt = () => setDebts([...debts, { name: '', value: 0, tag: '' }]);
@@ -301,7 +307,7 @@ function BalanceSheetSection({ year, month, onSaved, onMetaChange, tagsRefreshKe
           <h2>Balance sheet · {monthLabel} {year}</h2>
           {!expanded && (totalAssets > 0 || totalDebts > 0) && (
             <span className="pill section-header-summary">
-              Net ₹{netWorth.toLocaleString('en-IN')}
+              Net {inr(netWorth)}
             </span>
           )}
         </button>
@@ -348,7 +354,7 @@ function BalanceSheetSection({ year, month, onSaved, onMetaChange, tagsRefreshKe
                   <button type="button" className="ghost-btn small" onClick={addAsset}>+ Add asset</button>
                   <div className="balance-sheet-total">
                     <span>Total assets</span>
-                    <strong>₹{totalAssets.toLocaleString()}</strong>
+                    <strong>{inr(totalAssets)}</strong>
                   </div>
                 </div>
                 <div className="balance-sheet-column">
@@ -367,14 +373,14 @@ function BalanceSheetSection({ year, month, onSaved, onMetaChange, tagsRefreshKe
                   <button type="button" className="ghost-btn small" onClick={addDebt}>+ Add debt</button>
                   <div className="balance-sheet-total">
                     <span>Total debts</span>
-                    <strong>₹{totalDebts.toLocaleString()}</strong>
+                    <strong>{inr(totalDebts)}</strong>
                   </div>
                 </div>
               </div>
               <div className="balance-sheet-net">
                 <span>Net worth</span>
                 <strong className={netWorth >= 0 ? 'positive' : 'negative'}>
-                  ₹{netWorth.toLocaleString()}
+                  {inr(netWorth)}
                 </strong>
               </div>
 
@@ -396,7 +402,7 @@ function BalanceSheetSection({ year, month, onSaved, onMetaChange, tagsRefreshKe
                           options={pieOptions}
                         />
                       </div>
-                      <p className="chart-total">Total: ₹{totalAssets.toLocaleString('en-IN')}</p>
+                      <p className="chart-total">Total: {inr(totalAssets)}</p>
                       <ChartBreakdownList
                         items={assetsWithValue.map((a) => ({
                           name: a.name || '—',
@@ -423,7 +429,7 @@ function BalanceSheetSection({ year, month, onSaved, onMetaChange, tagsRefreshKe
                           options={pieOptions}
                         />
                       </div>
-                      <p className="chart-total">Total: ₹{totalDebts.toLocaleString('en-IN')}</p>
+                      <p className="chart-total">Total: {inr(totalDebts)}</p>
                       <ChartBreakdownList
                         items={debtsWithValue.map((d) => ({
                           name: d.name || '—',
@@ -440,7 +446,7 @@ function BalanceSheetSection({ year, month, onSaved, onMetaChange, tagsRefreshKe
                       <div className="balance-sheet-chart-wrap">
                         <Pie data={assetsTagPie} options={pieOptions} />
                       </div>
-                      <p className="chart-total">Total: ₹{totalAssets.toLocaleString('en-IN')}</p>
+                      <p className="chart-total">Total: {inr(totalAssets)}</p>
                       <ChartBreakdownList
                         items={assetsByTag}
                         labelKey="tag"
@@ -454,7 +460,7 @@ function BalanceSheetSection({ year, month, onSaved, onMetaChange, tagsRefreshKe
                       <div className="balance-sheet-chart-wrap">
                         <Pie data={debtsTagPie} options={pieOptions} />
                       </div>
-                      <p className="chart-total">Total: ₹{totalDebts.toLocaleString('en-IN')}</p>
+                      <p className="chart-total">Total: {inr(totalDebts)}</p>
                       <ChartBreakdownList
                         items={debtsByTag}
                         labelKey="tag"

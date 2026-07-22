@@ -1,3 +1,5 @@
+import { useFormatMoney } from '../utils/formatMoney';
+
 const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function pctOf(part, whole) {
@@ -12,15 +14,17 @@ function changeClass(diff, kind) {
 }
 
 function ChangeDelta({ change, kind, prevValue }) {
+  const { hideAmounts, mask, inr } = useFormatMoney();
   if (change == null || change === 0) return null;
   const cls = changeClass(change, kind);
   const prev = Number(prevValue) || 0;
   const pct = prev !== 0 ? Math.round((change / prev) * 1000) / 10 : null;
   const arrow = change >= 0 ? '↑' : '↓';
+  const amtPart = hideAmounts ? mask : inr(Math.abs(change));
 
   return (
     <em className={cls} title="Vs previous month">
-      {arrow} ₹{Math.abs(change).toLocaleString('en-IN')}
+      {arrow} {amtPart}
       {pct != null && (
         <span className="sticky-change-pct">
           {' '}({pct >= 0 ? '+' : ''}{pct}%)
@@ -40,10 +44,11 @@ function StickyStat({
   changeKind,
   changePrev = null,
 }) {
+  const { inr } = useFormatMoney();
   return (
     <span className={`sticky-stat ${className}`.trim()} title={title}>
       {label}{' '}
-      <strong>₹{Number(value || 0).toLocaleString('en-IN')}</strong>
+      <strong>{inr(value || 0)}</strong>
       {pctOfInflow != null && <em className="sticky-pct-of-inflow">{pctOfInflow}%</em>}
       <ChangeDelta change={change} kind={changeKind} prevValue={changePrev} />
     </span>

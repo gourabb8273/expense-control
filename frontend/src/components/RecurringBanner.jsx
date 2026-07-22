@@ -3,8 +3,11 @@ import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { SkeletonLine } from './Skeleton';
 
+import { useFormatMoney } from '../utils/formatMoney';
+
 function RecurringBanner({ year, month, refreshKey = 0, onApplied }) {
   const toast = useToast();
+  const { inr } = useFormatMoney();
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
@@ -109,7 +112,7 @@ function RecurringBanner({ year, month, refreshKey = 0, onApplied }) {
                 <li key={p.ruleId} className="recurring-pending-row">
                   <span>{p.name}</span>
                   <span className="muted small">
-                    {p.type} · ₹{Number(p.amount).toLocaleString('en-IN')} · {p.category}
+                    {p.type} · {inr(p.amount)} · {p.category}
                   </span>
                 </li>
               ))}

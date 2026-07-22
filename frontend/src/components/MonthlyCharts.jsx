@@ -11,24 +11,14 @@ import {
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import CollapsibleChartCard from './CollapsibleChartCard';
+import ChartTotal from './ChartTotal';
+import { useFormatMoney } from '../utils/formatMoney';
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend, ChartDataLabels);
-
-function formatAmount(n) {
-  return `₹${Number(n).toLocaleString('en-IN')}`;
-}
 
 const PIE_COLORS = ['#3b82f6', '#22c55e', '#f97316', '#a855f7', '#ec4899', '#eab308', '#0ea5e9', '#14b8a6'];
 
-function ChartTotal({ amount, label = 'Total' }) {
-  if (amount == null || Number(amount) === 0) return null;
-  return (
-    <p className="chart-total">
-      {label}: {formatAmount(Number(amount))}
-    </p>
-  );
-}
-
 function CategoryList({ items, labelKey, valueKey }) {
+  const { inr } = useFormatMoney();
   if (!items || items.length === 0) return null;
 
   const total = items.reduce((sum, item) => sum + (Number(item[valueKey]) || 0), 0);
@@ -43,7 +33,7 @@ function CategoryList({ items, labelKey, valueKey }) {
             <li key={item[labelKey]} className="chart-list-row">
               <span className="chart-list-label">{item[labelKey]}</span>
               <span className="chart-list-value">
-                {formatAmount(value)} {percent ? `(${percent}%)` : ''}
+                {inr(value)} {percent ? `(${percent}%)` : ''}
               </span>
             </li>
           );
@@ -76,6 +66,7 @@ function parseDescriptionBreakdown(description) {
 }
 
 function TitleTagBreakdownCard({ title, breakdown, emptyText, transactions = [], txType }) {
+  const { inr } = useFormatMoney();
   const tags = useMemo(
     () => (Array.isArray(breakdown) ? breakdown.map((b) => b.tag).filter(Boolean) : []),
     [breakdown]
@@ -210,7 +201,7 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText, transactions = [],
                         {item.type} {isSelected ? '· details' : ''}
                       </span>
                       <span className="chart-list-value">
-                        {formatAmount(value)} {percent ? `(${percent}%)` : ''}
+                        {inr(value)} {percent ? `(${percent}%)` : ''}
                       </span>
                     </li>
                   );
@@ -231,18 +222,18 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText, transactions = [],
                     <li key={row.label} className="desc-breakdown-row">
                       <span className="desc-breakdown-label">{row.label}</span>
                       <span className="desc-breakdown-value">
-                        {formatAmount(row.value)}
+                        {inr(row.value)}
                       </span>
                     </li>
                   ))}
                 </ul>
                 <p className="desc-breakdown-summary">
-                  Breakdown from descriptions: {formatAmount(descriptionBreakdown.totalFromDescriptions)}{' '}
+                  Breakdown from descriptions: {inr(descriptionBreakdown.totalFromDescriptions)}{' '}
                   {descriptionBreakdown.matches ? (
                     <span className="desc-breakdown-ok">(matches chart total)</span>
                   ) : (
                     <span className="desc-breakdown-mismatch">
-                      (diff vs chart: {formatAmount(descriptionBreakdown.diff)})
+                      (diff vs chart: {inr(descriptionBreakdown.diff)})
                     </span>
                   )}
                 </p>
@@ -258,6 +249,7 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText, transactions = [],
 }
 
 function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
+  const { inr, hideAmounts } = useFormatMoney();
   const {
     totalExpense = 0,
     totalInvestment = 0,
@@ -507,7 +499,7 @@ function MonthlyCharts({ monthSummary, comparison, transactions = [] }) {
         anchor: 'end',
         align: 'end',
         font: { size: 9, weight: 'bold' },
-        formatter: (value) => formatAmount(value),
+        formatter: (value) => inr(value),
       },
     },
   });

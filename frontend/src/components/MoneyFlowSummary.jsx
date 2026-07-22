@@ -1,3 +1,5 @@
+import { useFormatMoney } from '../utils/formatMoney';
+
 function pct(part, whole) {
   if (!whole || whole <= 0) return null;
   return Math.round((part / whole) * 1000) / 10;
@@ -66,10 +68,11 @@ export function AllocationBar({ inflow = 0, investment = 0, expense = 0, classNa
 }
 
 export function KpiWithPct({ label, amount, pctOfInflow, className = '' }) {
+  const { inr } = useFormatMoney();
   return (
     <div className={`kpi kpi-with-pct ${className}`.trim()}>
       <span className="kpi-label">{label}</span>
-      <span className={`kpi-value ${className}`.trim()}>₹{Number(amount || 0).toLocaleString('en-IN')}</span>
+      <span className={`kpi-value ${className}`.trim()}>{inr(amount || 0)}</span>
       {pctOfInflow != null && (
         <span className="kpi-pct muted small">{pctOfInflow}% of inflow</span>
       )}

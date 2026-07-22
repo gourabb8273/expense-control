@@ -23,6 +23,8 @@ import { KpiSkeletonGrid } from '../components/Skeleton';
 import { useToast } from '../context/ToastContext';
 import { ChartsExpandProvider, waitForChartRender } from '../context/ChartsExpandContext';
 import ChartsExpandToggle from '../components/ChartsExpandToggle';
+import HideAmountsToggle from '../components/HideAmountsToggle';
+import { useFormatMoney } from '../utils/formatMoney';
 
 function balanceSheetTotalsFromSheet(data) {
   const totalAssets = (data?.assets || []).reduce((s, i) => s + (Number(i.value) || 0), 0);
@@ -65,6 +67,7 @@ function DashboardPage() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const toast = useToast();
+  const { inr, signed, hideAmounts } = useFormatMoney();
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [year, setYear] = useState(today.getFullYear());
@@ -525,6 +528,7 @@ function DashboardPage() {
         pendingRecurringCount,
         untaggedExpenseAmount,
         netWorthDown: netWorthChange != null && netWorthChange < 0,
+        hideAmounts,
       }),
     [
       cashflowAmount,
@@ -535,6 +539,7 @@ function DashboardPage() {
       pendingRecurringCount,
       untaggedExpenseAmount,
       netWorthChange,
+      hideAmounts,
     ]
   );
 
@@ -613,6 +618,7 @@ function DashboardPage() {
             >
               Portfolio
             </button>
+            <HideAmountsToggle />
           </div>
           <div className="export-pdf-row">
             {viewMode === 'monthly' && (
@@ -777,17 +783,17 @@ function DashboardPage() {
                   <div className="kpi kpi-with-pct kpi-networth">
                     <span className="kpi-label">Net worth</span>
                     <span className={`kpi-value networth ${balanceSheetMeta.netWorth >= 0 ? '' : 'negative'}`}>
-                      ₹{balanceSheetMeta.netWorth.toLocaleString('en-IN')}
+                      {inr(balanceSheetMeta.netWorth)}
                     </span>
                     {netWorthChange != null && (
                       <span className={`kpi-pct ${netWorthChange >= 0 ? 'positive' : 'negative'}`}>
-                        {netWorthChange >= 0 ? '+' : '-'}₹{Math.abs(netWorthChange).toLocaleString('en-IN')} vs last month
+                        {signed(netWorthChange)} vs last month
                       </span>
                     )}
                   </div>
                   <div className="kpi kpi-with-pct outflow">
                     <span className="kpi-label">Total outflow</span>
-                    <span className="kpi-value outflow">₹{totalForMonth.toLocaleString('en-IN')}</span>
+                    <span className="kpi-value outflow">{inr(totalForMonth)}</span>
                     {cashflowAmount > 0 && (
                       <span className="kpi-pct muted small">
                         {pctOfInflow(totalForMonth, cashflowAmount)}% of inflow
@@ -983,7 +989,7 @@ function DashboardPage() {
                         )}
                     </div>
                     <div className="tx-meta">
-                        <span className="tx-amount">₹{tx.amount.toLocaleString()}</span>
+                        <span className="tx-amount">{inr(tx.amount)}</span>
                         <span className="tx-date">
                           {new Date(tx.date).toLocaleDateString('en-IN', {
                             day: '2-digit',
@@ -1045,18 +1051,18 @@ function DashboardPage() {
                                         <li key={item.label} className="desc-breakdown-row">
                                           <span className="desc-breakdown-label">{item.label}</span>
                                           <span className="desc-breakdown-value">
-                                            ₹{item.value.toLocaleString('en-IN')}
+                                            {inr(item.value)}
                                           </span>
                                         </li>
                                       ))}
                                     </ul>
                                     <p className="desc-breakdown-summary">
-                                      Breakdown total: ₹{sum.toLocaleString('en-IN')}{' '}
+                                      Breakdown total: {inr(sum)}{' '}
                                       {matches ? (
                                         <span className="desc-breakdown-ok">(matches entry amount)</span>
                                       ) : (
                                         <span className="desc-breakdown-mismatch">
-                                          (diff vs entry: ₹{diff.toLocaleString('en-IN')})
+                                          (diff vs entry: {inr(diff)})
                                         </span>
                                       )}
                                     </p>
@@ -1147,19 +1153,19 @@ function DashboardPage() {
                           <div className="kpi">
                             <span className="kpi-label">Total cash inflow (sum of months)</span>
                             <span className="kpi-value">
-                              ₹{yearlyCashflow.toLocaleString('en-IN')}
+                              {inr(yearlyCashflow)}
                             </span>
                           </div>
                           <div className="kpi">
                             <span className="kpi-label">Total investment (year)</span>
                             <span className="kpi-value invest">
-                              ₹{yearlyInvestment.toLocaleString('en-IN')}
+                              {inr(yearlyInvestment)}
                             </span>
                           </div>
                           <div className="kpi">
                             <span className="kpi-label">Total expense (year)</span>
                             <span className="kpi-value expense">
-                              ₹{yearlyExpense.toLocaleString('en-IN')}
+                              {inr(yearlyExpense)}
                             </span>
                           </div>
                           <div className="kpi">
@@ -1167,7 +1173,7 @@ function DashboardPage() {
                               Remaining balance (cashflow − invest − expense)
                             </span>
                             <span className={`kpi-value ${remainingClass}`}>
-                              ₹{remaining.toLocaleString('en-IN')}
+                              {inr(remaining)}
                             </span>
                           </div>
                         </div>
@@ -1190,10 +1196,10 @@ function DashboardPage() {
                             let summaryText;
                             let summaryClass = 'month-ie-neutral';
                             if (diff > 0) {
-                              summaryText = `Invest ahead by ₹${diffAbs.toLocaleString('en-IN')}`;
+                              summaryText = `Invest ahead by ${inr(diffAbs)}`;
                               summaryClass = 'month-ie-positive';
                             } else if (diff < 0) {
-                              summaryText = `Expenses ahead by ₹${diffAbs.toLocaleString('en-IN')}`;
+                              summaryText = `Expenses ahead by ${inr(diffAbs)}`;
                               summaryClass = 'month-ie-negative';
                             } else {
                               summaryText = 'Invest & expense matched';
@@ -1207,12 +1213,12 @@ function DashboardPage() {
                                   })}
                                 </span>
                                 <span className="month-values">
-                                  CF: ₹{cashflowForMonth.toLocaleString('en-IN')}
+                                  CF: {inr(cashflowForMonth)}
                                 </span>
                                 <span className="month-ie-line">
-                                  <span className="month-ie-inv">Inv ₹{inv.toLocaleString('en-IN')}</span>
+                                  <span className="month-ie-inv">Inv {inr(inv)}</span>
                                   <span className="month-ie-sep"> · </span>
-                                  <span className="month-ie-exp">Exp ₹{exp.toLocaleString('en-IN')}</span>
+                                  <span className="month-ie-exp">Exp {inr(exp)}</span>
                                 </span>
                                 <span className={`month-ie-summary ${summaryClass}`} title="Investment minus expense for this month (cashflow is separate above).">
                                   {summaryText}
@@ -1222,7 +1228,7 @@ function DashboardPage() {
                                     className={`month-after-cf ${monthRemaining >= 0 ? 'positive' : 'negative'}`}
                                     title="Cashflow you entered this month, minus investment and expense."
                                   >
-                                    After CF: ₹{monthRemaining.toLocaleString('en-IN')}
+                                    After CF: {inr(monthRemaining)}
                                   </span>
                                 )}
                               </div>

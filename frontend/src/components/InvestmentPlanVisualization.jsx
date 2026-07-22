@@ -8,6 +8,7 @@ import {
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { formatSharePct } from '../utils/formatSharePct';
+import { useFormatMoney } from '../utils/formatMoney';
 import { itemColor, groupColor } from '../utils/investmentPlanColors';
 
 ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
@@ -57,7 +58,7 @@ function buildSortedItems(itemsWithAmount, groups) {
     });
 }
 
-const doughnutOptions = {
+const doughnutOptionsBase = {
   responsive: true,
   maintainAspectRatio: false,
   cutout: '64%',
@@ -82,65 +83,82 @@ const doughnutOptions = {
       borderColor: 'rgba(148, 163, 184, 0.2)',
       borderWidth: 1,
       padding: 10,
-      callbacks: {
-        title: (items) => items[0]?.label || '',
-        label: (ctx) => {
-          const v = ctx.raw || 0;
-          const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
-          const pct = formatSharePct(v, total);
-          const tag = ctx.dataset.tags?.[ctx.dataIndex] || '';
-          const platform = ctx.dataset.platforms?.[ctx.dataIndex] || '';
-          const lines = [`₹${Number(v).toLocaleString('en-IN')} · ${pct}% of plan`];
-          if (tag) lines.push(`Group: ${tag}`);
-          if (platform) lines.push(`Platform: ${platform}`);
-          return lines;
-        },
-      },
     },
   },
 };
 
-const groupPieOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: { display: false },
-    datalabels: { display: false },
-    tooltip: {
-      backgroundColor: 'rgba(15, 23, 42, 0.94)',
-      borderColor: 'rgba(148, 163, 184, 0.2)',
-      borderWidth: 1,
-      padding: 10,
-      callbacks: {
-        label: (ctx) => {
-          const v = ctx.raw || 0;
-          const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
-          const pct = formatSharePct(v, total);
-          return `₹${Number(v).toLocaleString('en-IN')} (${pct}%)`;
+function buildDoughnutOptions(chartLabel) {
+  return {
+    ...doughnutOptionsBase,
+    plugins: {
+      ...doughnutOptionsBase.plugins,
+      tooltip: {
+        ...doughnutOptionsBase.plugins.tooltip,
+        callbacks: {
+          title: (items) => items[0]?.label || '',
+          label: (ctx) => {
+            const v = ctx.raw || 0;
+            const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
+            const pct = formatSharePct(v, total);
+            const tag = ctx.dataset.tags?.[ctx.dataIndex] || '';
+            const platform = ctx.dataset.platforms?.[ctx.dataIndex] || '';
+            const lines = [`${chartLabel(v)} · ${pct}% of plan`];
+            if (tag) lines.push(`Group: ${tag}`);
+            if (platform) lines.push(`Platform: ${platform}`);
+            return lines;
+          },
         },
       },
     },
-  },
-};
+  };
+}
 
-const miniPieOptions = {
-  ...groupPieOptions,
-  plugins: {
-    ...groupPieOptions.plugins,
-    tooltip: {
-      ...groupPieOptions.plugins.tooltip,
-      callbacks: {
-        label: (ctx) => {
-          const v = ctx.raw || 0;
-          const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
-          const pct = formatSharePct(v, total);
-          const label = ctx.label || '';
-          return `${label}: ₹${Number(v).toLocaleString('en-IN')} (${pct}% of group)`;
+function buildGroupPieOptions(chartLabel) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      datalabels: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.94)',
+        borderColor: 'rgba(148, 163, 184, 0.2)',
+        borderWidth: 1,
+        padding: 10,
+        callbacks: {
+          label: (ctx) => {
+            const v = ctx.raw || 0;
+            const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
+            const pct = formatSharePct(v, total);
+            return `${chartLabel(v)} (${pct}%)`;
+          },
         },
       },
     },
-  },
-};
+  };
+}
+
+function buildMiniPieOptions(chartLabel) {
+  const base = buildGroupPieOptions(chartLabel);
+  return {
+    ...base,
+    plugins: {
+      ...base.plugins,
+      tooltip: {
+        ...base.plugins.tooltip,
+        callbacks: {
+          label: (ctx) => {
+            const v = ctx.raw || 0;
+            const total = ctx.dataset.data.reduce((s, x) => s + x, 0);
+            const pct = formatSharePct(v, total);
+            const label = ctx.label || '';
+            return `${label}: ${chartLabel(v)} (${pct}% of group)`;
+          },
+        },
+      },
+    },
+  };
+}
 
 function GroupMiniBar({ group }) {
   return (
@@ -165,6 +183,11 @@ function GroupMiniBar({ group }) {
 }
 
 function GroupDetailChart({ group, totalPlanned }) {
+  const { inr, chartLabel, hideAmounts } = useFormatMoney();
+  const miniPieOptions = useMemo(
+    () => buildMiniPieOptions(chartLabel),
+    [chartLabel, hideAmounts]
+  );
   const pieData = {
     labels: group.lines.map((l) => l.name),
     datasets: [{
@@ -182,7 +205,7 @@ function GroupDetailChart({ group, totalPlanned }) {
       <header className="investment-plan-viz-group-chart-head">
         <span className="investment-plan-viz-group-chart-tag">{group.tag}</span>
         <span className="investment-plan-viz-group-chart-meta">
-          ₹{group.total.toLocaleString('en-IN')}
+          {inr(group.total)}
           <em>{formatSharePct(group.total, totalPlanned)}% of plan</em>
         </span>
       </header>
@@ -200,7 +223,7 @@ function GroupDetailChart({ group, totalPlanned }) {
                   aria-hidden="true"
                 />
                 <span className="investment-plan-viz-group-chart-legend-name">{line.name}</span>
-                <strong>₹{(Number(line.amount) || 0).toLocaleString('en-IN')}</strong>
+                <strong>{inr(line.amount)}</strong>
                 <em>{formatSharePct(line.amount, group.total)}%</em>
               </li>
             ))}
@@ -211,7 +234,7 @@ function GroupDetailChart({ group, totalPlanned }) {
           <GroupMiniBar group={group} />
           <p className="investment-plan-viz-group-chart-single-line">
             <span>{group.lines[0]?.name}</span>
-            <strong>₹{(Number(group.lines[0]?.amount) || 0).toLocaleString('en-IN')}</strong>
+            <strong>{inr(group.lines[0]?.amount || 0)}</strong>
           </p>
         </div>
       )}
@@ -220,6 +243,7 @@ function GroupDetailChart({ group, totalPlanned }) {
 }
 
 function GroupStrip({ groups, totalPlanned }) {
+  const { inr } = useFormatMoney();
   return (
     <div className="investment-plan-viz-strip">
       <div
@@ -232,7 +256,7 @@ function GroupStrip({ groups, totalPlanned }) {
             key={g.tag}
             className="investment-plan-viz-bar-group"
             style={{ width: `${(g.total / totalPlanned) * 100}%` }}
-            title={`${g.tag}: ₹${g.total.toLocaleString('en-IN')}`}
+            title={`${g.tag}: ${inr(g.total)}`}
           >
             {g.lines.map((line, i) => (
               <div
@@ -262,6 +286,15 @@ function GroupStrip({ groups, totalPlanned }) {
 }
 
 export default function InvestmentPlanVisualization({ itemsWithAmount, notes, totalPlanned }) {
+  const { inr, chartLabel, hideAmounts } = useFormatMoney();
+  const doughnutOptions = useMemo(
+    () => buildDoughnutOptions(chartLabel),
+    [chartLabel, hideAmounts]
+  );
+  const groupPieOptions = useMemo(
+    () => buildGroupPieOptions(chartLabel),
+    [chartLabel, hideAmounts]
+  );
   const groups = useMemo(() => buildGroups(itemsWithAmount), [itemsWithAmount]);
   const sortedItems = useMemo(
     () => buildSortedItems(itemsWithAmount, groups),
@@ -302,7 +335,7 @@ export default function InvestmentPlanVisualization({ itemsWithAmount, notes, to
         <div className="investment-plan-viz-total">
           <span className="investment-plan-viz-total-label">Portfolio plan</span>
           <strong className="investment-plan-viz-total-amt">
-            ₹{totalPlanned.toLocaleString('en-IN')}
+            {inr(totalPlanned)}
           </strong>
           <span className="investment-plan-viz-total-meta">
             {itemsWithAmount.length} allocations · {groups.length} groups
@@ -324,7 +357,7 @@ export default function InvestmentPlanVisualization({ itemsWithAmount, notes, to
             </div>
             <div className="investment-plan-viz-donut-center" aria-hidden="true">
               <span>Total</span>
-              <strong>₹{totalPlanned.toLocaleString('en-IN')}</strong>
+              <strong>{inr(totalPlanned)}</strong>
             </div>
           </div>
           <ul className="investment-plan-viz-item-legend">
@@ -346,7 +379,7 @@ export default function InvestmentPlanVisualization({ itemsWithAmount, notes, to
                   </span>
                 </div>
                 <span className="investment-plan-viz-item-amt">
-                  ₹{(Number(item.amount) || 0).toLocaleString('en-IN')}
+                  {inr(item.amount)}
                   <em>{formatSharePct(item.amount, totalPlanned)}%</em>
                 </span>
               </li>
@@ -366,7 +399,7 @@ export default function InvestmentPlanVisualization({ itemsWithAmount, notes, to
               <li key={g.tag}>
                 <i className="investment-plan-viz-swatch" style={{ backgroundColor: g.color }} aria-hidden="true" />
                 <span>{g.tag}</span>
-                <strong>₹{g.total.toLocaleString('en-IN')}</strong>
+                <strong>{inr(g.total)}</strong>
                 <em>{formatSharePct(g.total, totalPlanned)}%</em>
               </li>
             ))}
@@ -391,7 +424,7 @@ export default function InvestmentPlanVisualization({ itemsWithAmount, notes, to
               <header className="investment-plan-viz-group-head">
                 <span className="investment-plan-viz-group-tag">{g.tag}</span>
                 <span className="investment-plan-viz-group-amt">
-                  ₹{g.total.toLocaleString('en-IN')}
+                  {inr(g.total)}
                   <em>{formatSharePct(g.total, totalPlanned)}%</em>
                 </span>
               </header>
@@ -405,7 +438,7 @@ export default function InvestmentPlanVisualization({ itemsWithAmount, notes, to
                       <span className="investment-plan-viz-line-platform investment-plan-viz-line-platform-empty" aria-hidden="true" />
                     )}
                     <span className="investment-plan-viz-line-amt">
-                      ₹{(Number(line.amount) || 0).toLocaleString('en-IN')}
+                      {inr(line.amount)}
                       <em className="investment-plan-viz-line-pct">{formatSharePct(line.amount, totalPlanned)}%</em>
                     </span>
                   </li>

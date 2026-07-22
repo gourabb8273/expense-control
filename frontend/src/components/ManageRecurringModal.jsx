@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 
+import { useFormatMoney } from '../utils/formatMoney';
+
 const EMPTY_FORM = {
   name: '',
   type: 'expense',
@@ -16,6 +18,7 @@ const EMPTY_FORM = {
 
 function ManageRecurringModal({ isOpen, onClose, onSaved, staticCategories = [] }) {
   const toast = useToast();
+  const { inr } = useFormatMoney();
   const [rules, setRules] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
@@ -212,7 +215,7 @@ function ManageRecurringModal({ isOpen, onClose, onSaved, staticCategories = [] 
                 <div className="recurring-rule-main">
                   <strong>{rule.name}</strong>
                   <span className="muted small">
-                    {rule.type} · ₹{Number(rule.amount).toLocaleString('en-IN')} · {rule.category} · day {rule.dayOfMonth}
+                    {rule.type} · {inr(rule.amount)} · {rule.category} · day {rule.dayOfMonth}
                   </span>
                 </div>
                 <div className="recurring-rule-actions">

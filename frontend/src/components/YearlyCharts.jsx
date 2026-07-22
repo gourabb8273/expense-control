@@ -16,6 +16,8 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 import CollapsibleChartCard from './CollapsibleChartCard';
 import LineChartFrame from './LineChartFrame';
 import TrendLineWidthToggle from './TrendLineWidthToggle';
+import ChartTotal from './ChartTotal';
+import { useFormatMoney } from '../utils/formatMoney';
 
 ChartJS.register(
   CategoryScale,
@@ -30,22 +32,10 @@ ChartJS.register(
   ChartDataLabels
 );
 
-function formatAmount(n) {
-  return `₹${Number(n).toLocaleString('en-IN')}`;
-}
-
-function ChartTotal({ amount, label = 'Total' }) {
-  if (amount == null || Number(amount) === 0) return null;
-  return (
-    <p className="chart-total">
-      {label}: {formatAmount(Number(amount))}
-    </p>
-  );
-}
-
 const PIE_COLORS = ['#3b82f6', '#22c55e', '#f97316', '#a855f7', '#ec4899', '#eab308', '#0ea5e9', '#14b8a6'];
 
 function CategoryList({ title, items, labelKey, valueKey }) {
+  const { inr } = useFormatMoney();
   if (!items || items.length === 0) return null;
 
   const total = items.reduce((sum, item) => sum + (Number(item[valueKey]) || 0), 0);
@@ -61,7 +51,7 @@ function CategoryList({ title, items, labelKey, valueKey }) {
             <li key={item[labelKey]} className="chart-list-row">
               <span className="chart-list-label">{item[labelKey]}</span>
               <span className="chart-list-value">
-                {formatAmount(value)} {percent ? `(${percent}%)` : ''}
+                {inr(value)} {percent ? `(${percent}%)` : ''}
               </span>
             </li>
           );
@@ -135,6 +125,7 @@ function TitleTagBreakdownCard({ title, breakdown, emptyText }) {
 }
 
 function YearlyTrendChart({ yearly }) {
+  const { inr } = useFormatMoney();
   if (!yearly?.monthly?.length) return null;
 
   const { monthly = [] } = yearly;
@@ -222,17 +213,17 @@ function YearlyTrendChart({ yearly }) {
                   <div className="chart-month-main">
                     <span className="chart-list-label">{label}</span>
                     <span className="chart-list-value">
-                      {formatAmount(monthTotal)}
+                      {inr(monthTotal)}
                       {yearPct ? ` (${yearPct}% of year)` : ''}
                     </span>
                   </div>
                   {monthTotal > 0 && (
                     <div className="chart-month-sub">
                       <span className="chart-month-pill chart-month-pill-inv">
-                        Inv {formatAmount(inv)} ({invPct}%)
+                        Inv {inr(inv)} ({invPct}%)
                       </span>
                       <span className="chart-month-pill chart-month-pill-exp">
-                        Exp {formatAmount(exp)} ({expPct}%)
+                        Exp {inr(exp)} ({expPct}%)
                       </span>
                     </div>
                   )}
@@ -247,6 +238,7 @@ function YearlyTrendChart({ yearly }) {
 }
 
 function YearlyCharts({ yearly, yearlyCashflow }) {
+  const { inr, hideAmounts } = useFormatMoney();
   if (!yearly) {
     return null;
   }
@@ -518,7 +510,7 @@ function YearlyCharts({ yearly, yearlyCashflow }) {
         anchor: 'end',
         align: 'end',
         font: { size: 9, weight: 'bold' },
-        formatter: (value) => formatAmount(value),
+        formatter: (value) => inr(value),
       },
     },
   });
