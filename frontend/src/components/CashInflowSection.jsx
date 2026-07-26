@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToast } from '../context/ToastContext';
 import { api } from '../services/api';
 
+import PrivacyAmountInput from './PrivacyAmountInput';
 import { useFormatMoney } from '../utils/formatMoney';
 
 function resolveLoadedInflows(data) {
@@ -239,8 +240,7 @@ export default function CashInflowSection({ year, month, onTotalChange, onSaved 
                   onChange={(e) => updateRow(index, { label: e.target.value })}
                 />
               )}
-              <input
-                type="number"
+              <PrivacyAmountInput
                 min="0"
                 step="0.01"
                 className="cashflow-input inflow-amount-input"
@@ -249,6 +249,7 @@ export default function CashInflowSection({ year, month, onTotalChange, onSaved 
                   updateRow(index, { amount: e.target.value === '' ? 0 : Number(e.target.value) })
                 }
                 placeholder="0"
+                aria-label="Inflow amount"
               />
               {!isSalary && !isCarryForward && (
                 <button

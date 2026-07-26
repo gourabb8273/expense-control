@@ -24,6 +24,8 @@ import { useToast } from '../context/ToastContext';
 import { ChartsExpandProvider, waitForChartRender } from '../context/ChartsExpandContext';
 import ChartsExpandToggle from '../components/ChartsExpandToggle';
 import HideAmountsToggle from '../components/HideAmountsToggle';
+import PortfolioAlignmentSection from '../components/PortfolioAlignmentSection';
+import PrivacyAmountInput from '../components/PrivacyAmountInput';
 import { useFormatMoney } from '../utils/formatMoney';
 
 function balanceSheetTotalsFromSheet(data) {
@@ -821,6 +823,14 @@ function DashboardPage() {
                   setRecurringRefreshKey((k) => k + 1);
                 }}
               />
+              <PortfolioAlignmentSection
+                year={year}
+                month={month}
+                monthSummary={monthlySummary}
+                transactions={transactions}
+                loadingSummary={loading}
+                refreshKey={investmentPlanRefreshKey}
+              />
               <MonthRemarkSection key={`${year}-${month}`} year={year} month={month} />
           </section>
 
@@ -895,8 +905,7 @@ function DashboardPage() {
                         <option value="expense">Expense</option>
                         <option value="investment">Investment</option>
                       </select>
-                      <input
-                        type="number"
+                      <PrivacyAmountInput
                         value={editingTx.amount}
                         onChange={(e) => setEditingTx({ ...editingTx, amount: e.target.value })}
                         placeholder="Amount"

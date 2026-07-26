@@ -1529,6 +1529,139 @@
   border: 1px solid rgba(251, 191, 36, 0.25);
 }
 
+/* ——— Portfolio alignment (month view) ——— */
+.portfolio-alignment-card {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.85rem;
+}
+
+.portfolio-alignment-toggle {
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+}
+
+.portfolio-alignment-title {
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+.portfolio-alignment-body {
+  margin-top: 0.5rem;
+}
+
+.portfolio-alignment-from {
+  margin: 0 0 0.4rem;
+}
+
+.alignment-inline-ok {
+  font-size: 0.8rem;
+  color: #34d399;
+  font-weight: 500;
+}
+
+.alignment-inline-diffs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.alignment-inline-chip {
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.alignment-inline-more {
+  font-size: 0.75rem;
+}
+
+.alignment-all-ok {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #34d399;
+}
+
+.alignment-diff-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.alignment-diff-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.alignment-diff-item:last-child {
+  border-bottom: none;
+}
+
+.alignment-diff-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alignment-diff-val {
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.alignment-status-under,
+.alignment-inline-chip.alignment-status-under,
+.alignment-diff-item.alignment-status-under .alignment-diff-val {
+  color: #f87171;
+}
+
+.alignment-status-over,
+.alignment-inline-chip.alignment-status-over,
+.alignment-diff-item.alignment-status-over .alignment-diff-val {
+  color: #34d399;
+}
+
+.alignment-status-total,
+.alignment-inline-chip.alignment-status-total,
+.alignment-diff-item.alignment-status-total .alignment-diff-val {
+  color: #60a5fa;
+}
+
+[data-theme="light"] .alignment-status-under,
+[data-theme="light"] .alignment-inline-chip.alignment-status-under,
+[data-theme="light"] .alignment-diff-item.alignment-status-under .alignment-diff-val {
+  color: #dc2626;
+}
+
+[data-theme="light"] .alignment-status-over,
+[data-theme="light"] .alignment-inline-chip.alignment-status-over,
+[data-theme="light"] .alignment-diff-item.alignment-status-over .alignment-diff-val {
+  color: #059669;
+}
+
+[data-theme="light"] .alignment-status-total,
+[data-theme="light"] .alignment-inline-chip.alignment-status-total,
+[data-theme="light"] .alignment-diff-item.alignment-status-total .alignment-diff-val {
+  color: #2563eb;
+}
+
+.privacy-amount-input {
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--text-muted, #94a3b8);
+}
+
 .investment-plan-edit-heading {
   margin: 0.75rem 0 0.5rem;
   font-size: 0.95rem;

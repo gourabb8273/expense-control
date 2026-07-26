@@ -7,6 +7,7 @@ import {
   SUGGESTED_PLATFORMS,
   clonePlanItems,
 } from '../utils/investmentPlanTemplate';
+import PrivacyAmountInput from './PrivacyAmountInput';
 import InvestmentPlanVisualization from './InvestmentPlanVisualization';
 import { useFormatMoney } from '../utils/formatMoney';
 
@@ -80,8 +81,7 @@ function PlanLineRow({ item, index, tagOptions, platformOptions, onUpdate, onRem
       </div>
       <div className="bs-field bs-field-value">
         <span className="bs-field-label">Amount (₹)</span>
-        <input
-          type="number"
+        <PrivacyAmountInput
           className="bs-field-value-input"
           min="0"
           step="1"

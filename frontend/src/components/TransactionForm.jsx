@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import PrivacyAmountInput from './PrivacyAmountInput';
 
 function TransactionForm({ onCreated, staticCategories = [] }) {
   const [type, setType] = useState('expense');
@@ -93,8 +94,7 @@ function TransactionForm({ onCreated, staticCategories = [] }) {
         </label>
         <label className="field">
           <span>Amount</span>
-          <input
-            type="number"
+          <PrivacyAmountInput
             min="0"
             step="0.01"
             value={amount}

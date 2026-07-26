@@ -9,6 +9,7 @@ import {
 import { api } from '../services/api';
 import { aggregateByTag } from '../utils/aggregateByTag';
 import { formatSharePct } from '../utils/formatSharePct';
+import PrivacyAmountInput from './PrivacyAmountInput';
 import { useFormatMoney } from '../utils/formatMoney';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -84,8 +85,7 @@ function BalanceSheetLineRow({
       />
       <div className="bs-field bs-field-value">
         <span className="bs-field-label">Value (₹)</span>
-        <input
-          type="number"
+        <PrivacyAmountInput
           className="bs-field-value-input"
           min="0"
           step="1"

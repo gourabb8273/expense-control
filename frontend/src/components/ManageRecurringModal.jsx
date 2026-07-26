@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import PrivacyAmountInput from './PrivacyAmountInput';
 
 import { useFormatMoney } from '../utils/formatMoney';
 
@@ -156,7 +157,7 @@ function ManageRecurringModal({ isOpen, onClose, onSaved, staticCategories = [] 
             </label>
             <label className="field">
               <span>Amount</span>
-              <input type="number" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+              <PrivacyAmountInput min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
             </label>
             <label className="field">
               <span>Category</span>
