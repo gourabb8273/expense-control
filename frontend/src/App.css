@@ -4245,3 +4245,389 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ——— Toast action (undo) ——— */
+.toast-action {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: inherit;
+  border-radius: 0.4rem;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.toast-action:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+/* ——— Insights ——— */
+/* ——— Collapsible section ——— */
+.collapsible-section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+}
+
+.collapsible-section-header .section-header-toggle h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.collapsible-section-summary {
+  margin-left: auto;
+}
+
+.collapsible-section-body {
+  margin-top: 0.75rem;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.insight-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.6rem;
+  background: var(--kpi-bg);
+  border: 1px solid var(--kpi-border);
+}
+
+.insight-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.insight-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.insight-sub {
+  font-size: 0.75rem;
+}
+
+.insight-value.expense { color: var(--danger); }
+
+.insights-card .positive,
+.spending-calendar .positive,
+.year-review .positive { color: var(--success); }
+
+.insights-card .negative,
+.spending-calendar .negative,
+.year-review .negative { color: var(--danger); }
+
+.insight-changes {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.insight-change {
+  color: var(--text);
+}
+
+.insight-change strong {
+  color: var(--text);
+}
+
+.insight-change-arrow {
+  display: inline-block;
+  width: 1.1rem;
+  font-size: 0.7rem;
+}
+
+.insight-change.negative .insight-change-arrow { color: var(--danger); }
+.insight-change.positive .insight-change-arrow { color: var(--success); }
+
+.insight-empty {
+  margin: 0.6rem 0 0;
+}
+
+/* ——— Spending calendar ——— */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.cal-weekdays {
+  margin-bottom: 0.25rem;
+}
+
+.cal-weekday {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.cal-cell {
+  position: relative;
+  height: 3.2rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0.25rem 0.3rem;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.1s ease;
+}
+
+.cal-cell:hover {
+  border-color: var(--accent);
+}
+
+.cal-blank {
+  border: none;
+  background: transparent;
+  cursor: default;
+}
+
+.cal-day {
+  font-size: 0.7rem;
+  opacity: 0.85;
+}
+
+.cal-amount {
+  font-size: 0.66rem;
+  font-weight: 600;
+  align-self: flex-end;
+}
+
+.cal-invest-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.cal-cell .cal-invest-dot {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+}
+
+.cal-level-0 { background: var(--tx-row-bg); }
+.cal-level-1 { background: rgba(239, 68, 68, 0.18); }
+.cal-level-2 { background: rgba(239, 68, 68, 0.34); }
+.cal-level-3 { background: rgba(239, 68, 68, 0.52); }
+.cal-level-4 { background: rgba(239, 68, 68, 0.75); color: #fff; }
+
+.cal-today {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.cal-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+  transform: scale(1.04);
+}
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+}
+
+.cal-swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 0.2rem;
+  border: 1px solid var(--border-subtle);
+}
+
+.cal-legend-invest {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.6rem;
+}
+
+.cal-legend-hint {
+  margin-left: auto;
+}
+
+.day-filter-chip {
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  color: var(--text);
+  background: var(--btn-outline-bg);
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 480px) {
+  .cal-amount { font-size: 0.58rem; }
+  .cal-legend-hint { margin-left: 0; width: 100%; }
+}
+
+/* ——— Money flow ——— */
+.money-flow-scroll {
+  overflow-x: auto;
+}
+
+.money-flow-svg {
+  display: block;
+  width: 100%;
+  min-width: 560px;
+  height: auto;
+}
+
+.money-flow-link {
+  opacity: 0.28;
+  transition: opacity 0.15s ease;
+}
+
+.money-flow-link:hover {
+  opacity: 0.55;
+}
+
+.money-flow-label {
+  font-size: 12px;
+  fill: var(--text);
+  paint-order: stroke;
+  stroke: var(--card-bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.money-flow-name {
+  font-weight: 600;
+}
+
+.money-flow-amount {
+  fill: var(--text-muted);
+}
+
+/* ——— Year in review ——— */
+.year-review {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.review-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  color: #f8fafc;
+  background:
+    radial-gradient(circle at 85% 10%, rgba(99, 102, 241, 0.45), transparent 45%),
+    radial-gradient(circle at 10% 100%, rgba(34, 197, 94, 0.25), transparent 50%),
+    linear-gradient(135deg, #1e1b4b, #0f172a 60%, #020617);
+  box-shadow: var(--card-shadow);
+}
+
+.review-kicker {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #a5b4fc;
+}
+
+.review-title {
+  margin: 0.2rem 0;
+  font-size: 2rem;
+}
+
+.review-lede {
+  margin: 0;
+  color: #cbd5e1;
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+}
+
+.review-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.75rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+.review-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.review-stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.review-stat-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.review-inflow .review-stat-value { color: var(--accent); }
+.review-expense .review-stat-value { color: var(--danger); }
+.review-invest .review-stat-value { color: var(--success); }
+
+.review-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.75rem;
+}
+
+.review-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.review-card-kicker {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.review-card-big {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.review-list {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 480px) {
+  .review-hero { padding: 1.1rem; }
+  .review-title { font-size: 1.6rem; }
+}

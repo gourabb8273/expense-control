@@ -11,9 +11,9 @@ export function ToastProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const showToast = useCallback((message, type = 'info', durationMs = 3500) => {
+  const showToast = useCallback((message, type = 'info', durationMs = 3500, options = {}) => {
     const id = ++toastId;
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message, type, action: options.action || null }]);
     if (durationMs > 0) {
       setTimeout(() => dismiss(id), durationMs);
     }
@@ -23,11 +23,12 @@ export function ToastProvider({ children }) {
   const value = useMemo(
     () => ({
       showToast,
+      dismiss,
       success: (msg) => showToast(msg, 'success'),
       error: (msg) => showToast(msg, 'error', 5000),
       info: (msg) => showToast(msg, 'info'),
     }),
-    [showToast]
+    [showToast, dismiss]
   );
 
   return (
@@ -37,6 +38,18 @@ export function ToastProvider({ children }) {
         {toasts.map((t) => (
           <div key={t.id} className={`toast toast-${t.type}`} role="status">
             <span>{t.message}</span>
+            {t.action && (
+              <button
+                type="button"
+                className="toast-action"
+                onClick={() => {
+                  t.action.onClick();
+                  dismiss(t.id);
+                }}
+              >
+                {t.action.label}
+              </button>
+            )}
             <button type="button" className="toast-close" onClick={() => dismiss(t.id)} aria-label="Dismiss">
               ×
             </button>

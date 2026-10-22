@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/api';
@@ -16,6 +16,12 @@ import { MonthlyCashInflowCharts, YearlyCashInflowCharts } from '../components/C
 import { MonthRemarkSection, YearRemarksSection } from '../components/RemarkSection';
 import { AllocationBar, KpiWithPct } from '../components/MoneyFlowSummary';
 import AlertsBanner, { buildMonthAlerts } from '../components/AlertsBanner';
+import InsightsCard from '../components/InsightsCard';
+import useMonthHistory from '../hooks/useMonthHistory';
+import { categoryTotals, txCalendarDate, unusualSpend } from '../utils/insights';
+import MoneyFlowDiagram from '../components/MoneyFlowDiagram';
+import YearInReview from '../components/YearInReview';
+import SpendingCalendar from '../components/SpendingCalendar';
 import StickyMonthSummary from '../components/StickyMonthSummary';
 import RecurringBanner from '../components/RecurringBanner';
 import ManageRecurringModal from '../components/ManageRecurringModal';
@@ -65,6 +71,8 @@ function parseDescriptionBreakdown(description) {
   return { items, total };
 }
 
+const UNDO_DELETE_MS = 5000;
+
 function DashboardPage() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -75,15 +83,23 @@ function DashboardPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [monthlySummary, setMonthlySummary] = useState(null);
   const [yearlySummary, setYearlySummary] = useState(null);
-  const [transactions, setTransactions] = useState([]);
+  const [loadedTransactions, setTransactions] = useState([]);
+  // Deletes wait out the undo window before hitting the API; hidden from the UI meanwhile
+  const [pendingDeleteIds, setPendingDeleteIds] = useState(() => new Set());
+  const pendingDeleteTimersRef = useRef(new Map());
+  const transactions = useMemo(
+    () => loadedTransactions.filter((tx) => !pendingDeleteIds.has(tx._id)),
+    [loadedTransactions, pendingDeleteIds]
+  );
   const [loading, setLoading] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
-  const [viewMode, setViewMode] = useState('monthly'); // 'monthly' | 'yearly' | 'portfolio'
+  const [viewMode, setViewMode] = useState('monthly'); // 'monthly' | 'yearly' | 'portfolio' | 'review'
   const [staticCategories, setStaticCategories] = useState([]);
   const [categoriesModalOpen, setCategoriesModalOpen] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [listFilter, setListFilter] = useState('all'); // 'all' | 'expense' | 'investment'
   const [searchQuery, setSearchQuery] = useState('');
+  const [dayFilter, setDayFilter] = useState(null); // day of month picked in the spending calendar
   const [balanceSheetRefreshKey, setBalanceSheetRefreshKey] = useState(0);
   const [investmentPlanRefreshKey, setInvestmentPlanRefreshKey] = useState(0);
   const [entriesExpanded, setEntriesExpanded] = useState(true);
@@ -193,6 +209,10 @@ function DashboardPage() {
   }, [month, year]);
 
   useEffect(() => {
+    setDayFilter(null);
+  }, [month, year]);
+
+  useEffect(() => {
     setChartsExpandAll(false);
     setLineChartFullWidth(false);
   }, [viewMode, year, month]);
@@ -253,15 +273,69 @@ function DashboardPage() {
     return res.data.transaction;
   };
 
-  const handleDelete = async (id) => {
-    // Ask for confirmation before deleting an entry
-    // eslint-disable-next-line no-alert
-    const ok = window.confirm('Delete this entry? This cannot be undone.');
-    if (!ok) return;
-    await api.delete(`/transactions/${id}`);
-    toast.success('Entry deleted');
-    await loadData(month, year);
+  const periodRef = useRef({ month, year });
+  periodRef.current = { month, year };
+
+  const clearPendingDelete = (id) => {
+    const timer = pendingDeleteTimersRef.current.get(id);
+    if (timer) clearTimeout(timer);
+    pendingDeleteTimersRef.current.delete(id);
+    setPendingDeleteIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   };
+
+  const commitDelete = async (id, { reload = true } = {}) => {
+    if (!pendingDeleteTimersRef.current.has(id)) return;
+    clearPendingDelete(id);
+    try {
+      await api.delete(`/transactions/${id}`);
+    } catch (err) {
+      console.error('Failed to delete entry', err);
+      toast.error('Could not delete entry');
+    }
+    if (reload) await loadData(periodRef.current.month, periodRef.current.year);
+  };
+
+  const handleDelete = (id) => {
+    if (pendingDeleteTimersRef.current.has(id)) return;
+    if (editingTx?._id === id) setEditingTx(null);
+    const timer = setTimeout(() => commitDelete(id), UNDO_DELETE_MS);
+    pendingDeleteTimersRef.current.set(id, timer);
+    setPendingDeleteIds((prev) => new Set(prev).add(id));
+    toast.showToast('Entry deleted', 'success', UNDO_DELETE_MS, {
+      action: { label: 'Undo ↶', onClick: () => clearPendingDelete(id) },
+    });
+  };
+
+  // Commit any pending deletes when switching month/year or leaving the dashboard
+  useEffect(
+    () => () => {
+      Array.from(pendingDeleteTimersRef.current.keys()).forEach((id) => commitDelete(id));
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [month, year]
+  );
+
+  // Tab closed during the undo window: still send the delete
+  useEffect(() => {
+    const flush = () => {
+      const token = localStorage.getItem('authToken');
+      pendingDeleteTimersRef.current.forEach((timer, id) => {
+        clearTimeout(timer);
+        fetch(`${api.defaults.baseURL}/transactions/${id}`, {
+          method: 'DELETE',
+          keepalive: true,
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }).catch(() => {});
+      });
+      pendingDeleteTimersRef.current.clear();
+    };
+    window.addEventListener('pagehide', flush);
+    return () => window.removeEventListener('pagehide', flush);
+  }, []);
 
   const startEdit = (tx) => {
     setEditingTx({
@@ -406,6 +480,9 @@ function DashboardPage() {
     if (listFilter !== 'all') {
       list = list.filter((tx) => tx.type === listFilter);
     }
+    if (dayFilter) {
+      list = list.filter((tx) => txCalendarDate(tx).getUTCDate() === dayFilter);
+    }
     const q = (searchQuery || '').trim().toLowerCase();
     if (q) {
       list = list.filter(
@@ -518,6 +595,26 @@ function DashboardPage() {
   const totalDebtsChange =
     prevMonthBalance != null ? balanceSheetMeta.totalDebts - prevMonthBalance.totalDebts : null;
 
+  const monthFlowCategories = useMemo(() => {
+    const toRows = (map) => Array.from(map, ([category, total]) => ({ category, total }));
+    return {
+      expense: toRows(categoryTotals(transactions, 'expense')),
+      investment: toRows(categoryTotals(transactions, 'investment')),
+    };
+  }, [transactions]);
+
+  const { history: monthHistory, loading: historyLoading } = useMonthHistory(year, month, 6);
+  const unusualSpendRows = useMemo(
+    () =>
+      historyLoading
+        ? []
+        : unusualSpend(
+            transactions,
+            monthHistory.map((h) => h.transactions)
+          ),
+    [transactions, monthHistory, historyLoading]
+  );
+
   const monthAlerts = useMemo(
     () =>
       buildMonthAlerts({
@@ -530,6 +627,7 @@ function DashboardPage() {
         pendingRecurringCount,
         untaggedExpenseAmount,
         netWorthDown: netWorthChange != null && netWorthChange < 0,
+        unusualSpend: unusualSpendRows,
         hideAmounts,
       }),
     [
@@ -541,6 +639,7 @@ function DashboardPage() {
       pendingRecurringCount,
       untaggedExpenseAmount,
       netWorthChange,
+      unusualSpendRows,
       hideAmounts,
     ]
   );
@@ -620,6 +719,13 @@ function DashboardPage() {
             >
               Portfolio
             </button>
+            <button
+              type="button"
+              className={viewMode === 'review' ? 'primary-btn' : 'ghost-btn'}
+              onClick={() => setViewMode('review')}
+            >
+              Year in review
+            </button>
             <HideAmountsToggle />
           </div>
           <div className="export-pdf-row">
@@ -689,6 +795,21 @@ function DashboardPage() {
             </div>
             <YearRemarksSection key={year} year={year} />
             </>
+          )}
+
+          {viewMode === 'review' && (
+            <div className="filter-group">
+              <label>
+                <span>Year</span>
+                <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           )}
 
           {viewMode === 'portfolio' && (
@@ -813,6 +934,15 @@ function DashboardPage() {
                   )}
                 </div>
               </div>
+              <InsightsCard
+                year={year}
+                month={month}
+                transactions={transactions}
+                inflow={cashflowAmount}
+                expense={expenseAmount}
+                previous={monthHistory[0]}
+                loading={historyLoading || loading}
+              />
               <AlertsBanner alerts={monthAlerts} />
               <RecurringBanner
                 year={year}
@@ -894,6 +1024,20 @@ function DashboardPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
+                  {dayFilter && (
+                    <button
+                      type="button"
+                      className="pill day-filter-chip"
+                      onClick={() => setDayFilter(null)}
+                      title="Clear day filter"
+                    >
+                      {new Date(year, month - 1, dayFilter).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                      })}{' '}
+                      ×
+                    </button>
+                  )}
                 </div>
                 {editingTx && (
                   <div className="edit-bar">
@@ -1089,6 +1233,23 @@ function DashboardPage() {
                 )}
               </div>
             </div>
+            <SpendingCalendar
+              year={year}
+              month={month}
+              transactions={transactions}
+              selectedDay={dayFilter}
+              onSelectDay={(d) => {
+                setDayFilter(d);
+                if (d) setEntriesExpanded(true);
+              }}
+            />
+            <MoneyFlowDiagram
+              id="money-flow-month"
+              title="Money flow this month"
+              inflow={cashflowAmount}
+              expenseCategories={monthFlowCategories.expense}
+              investmentCategories={monthFlowCategories.investment}
+            />
             <div className="balance-sheet-month-wrap">
               <BalanceSheetSection
                 year={year}
@@ -1113,6 +1274,8 @@ function DashboardPage() {
           </section>
           </div>
         )}
+
+        {viewMode === 'review' && <YearInReview key={year} year={year} />}
 
         {viewMode === 'portfolio' && (
           <section className="dashboard-sections portfolio-view-page">
@@ -1248,6 +1411,15 @@ function DashboardPage() {
                     );
                   })()}
                 </div>
+              )}
+              {yearlySummary && (
+                <MoneyFlowDiagram
+                  id="money-flow-year"
+                  title={`Money flow · ${yearlySummary.year}`}
+                  inflow={yearlyCashflowArray.reduce((s, v) => s + (Number(v) || 0), 0)}
+                  expenseCategories={yearlySummary.expenseCategories}
+                  investmentCategories={yearlySummary.investmentCategories}
+                />
               )}
               <ChartsExpandToggle />
               <YearlyTrendChart yearly={yearlySummary} />

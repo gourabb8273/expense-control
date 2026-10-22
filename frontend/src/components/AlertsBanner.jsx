@@ -27,6 +27,7 @@ export function buildMonthAlerts({
   pendingRecurringCount,
   untaggedExpenseAmount,
   netWorthDown,
+  unusualSpend = [],
   hideAmounts = false,
 }) {
   const alerts = [];
@@ -85,5 +86,18 @@ export function buildMonthAlerts({
     });
   }
 
-  return alerts.slice(0, 4);
+  // Unusual-spend alerts are extra; they never push out the existing ones
+  const unusual = unusualSpend.map((u) => {
+    const ratio = u.ratio >= 10 ? Math.round(u.ratio) : Math.round(u.ratio * 10) / 10;
+    return {
+      id: `unusual-${u.category}`,
+      severity: 'warning',
+      message: `${u.category} this month is ${ratio}× your average (${formatInr(
+        u.now,
+        hideAmounts
+      )} vs ~${formatInr(Math.round(u.avg), hideAmounts)}).`,
+    };
+  });
+
+  return [...alerts.slice(0, 4), ...unusual];
 }
