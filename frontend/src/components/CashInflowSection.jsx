@@ -32,7 +32,13 @@ function orderInflowsForSave(rows) {
   return [salary, ...(carry ? [carry] : []), ...custom];
 }
 
-export default function CashInflowSection({ year, month, onTotalChange, onSaved }) {
+export default function CashInflowSection({
+  year,
+  month,
+  onTotalChange,
+  onSaved,
+  onInflowsChange,
+}) {
   const toast = useToast();
   const { inr } = useFormatMoney();
   const [inflows, setInflows] = useState([{ label: 'Salary', amount: 0, kind: 'salary' }]);
@@ -45,6 +51,9 @@ export default function CashInflowSection({ year, month, onTotalChange, onSaved 
   const userEditedRef = useRef(false);
   const inflowsRef = useRef(inflows);
   inflowsRef.current = inflows;
+  // Parent callbacks live in refs so a parent re-render doesn't re-trigger load()
+  const callbacksRef = useRef({ onTotalChange, onSaved, onInflowsChange });
+  callbacksRef.current = { onTotalChange, onSaved, onInflowsChange };
 
   const total = inflows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
 
@@ -60,21 +69,24 @@ export default function CashInflowSection({ year, month, onTotalChange, onSaved 
         headers: { 'Cache-Control': 'no-cache' },
       });
       const data = res.data;
+      const loaded = resolveLoadedInflows(data);
       skipNextSaveRef.current = true;
       userEditedRef.current = false;
-      setInflows(resolveLoadedInflows(data));
+      setInflows(loaded);
       setCarryForwardInfo(data.carryForward || null);
-      onTotalChange?.(data.total ?? 0);
+      callbacksRef.current.onTotalChange?.(data.total ?? 0);
+      callbacksRef.current.onInflowsChange?.(loaded);
     } catch {
       skipNextSaveRef.current = true;
       userEditedRef.current = false;
       setInflows([{ label: 'Salary', amount: 0, kind: 'salary' }]);
       setCarryForwardInfo(null);
-      onTotalChange?.(0);
+      callbacksRef.current.onTotalChange?.(0);
+      callbacksRef.current.onInflowsChange?.([]);
     } finally {
       setLoading(false);
     }
-  }, [year, month, onTotalChange]);
+  }, [year, month]);
 
   useEffect(() => {
     load();
@@ -92,10 +104,11 @@ export default function CashInflowSection({ year, month, onTotalChange, onSaved 
           explicitInflow: true,
         });
         const totalSaved = res.data.total ?? 0;
-        skipNextSaveRef.current = true;
-        setInflows(resolveLoadedInflows(res.data));
-        onTotalChange?.(totalSaved);
-        onSaved?.(totalSaved);
+        // Keep local rows as-is: the server drops blank rows, and replacing state here
+        // would wipe a just-added inflow or edits made while the save was in flight.
+        callbacksRef.current.onTotalChange?.(totalSaved);
+        callbacksRef.current.onInflowsChange?.(resolveLoadedInflows(res.data));
+        callbacksRef.current.onSaved?.(totalSaved);
         setSavedAt(new Date());
         return true;
       } catch {
@@ -105,7 +118,7 @@ export default function CashInflowSection({ year, month, onTotalChange, onSaved 
         setSaving(false);
       }
     },
-    [onTotalChange, onSaved, toast]
+    [toast]
   );
 
   const yearRef = useRef(year);
