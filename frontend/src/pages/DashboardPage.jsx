@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/api';
@@ -33,6 +33,14 @@ import HideAmountsToggle from '../components/HideAmountsToggle';
 import PortfolioAlignmentSection from '../components/PortfolioAlignmentSection';
 import PrivacyAmountInput from '../components/PrivacyAmountInput';
 import { useFormatMoney } from '../utils/formatMoney';
+import MonthGlance from '../components/MonthGlance';
+import MonthAnalytics from '../components/MonthAnalytics';
+import YearAnalytics from '../components/YearAnalytics';
+import UpcomingBills from '../components/UpcomingBills';
+import CollapsibleSection from '../components/CollapsibleSection';
+import { BottomNav, MonthStepper } from '../components/MobileNav';
+import MobileHeaderActions from '../components/MobileHeaderActions';
+import { colorFor, dayLabel, downloadCsv, groupByDay, transactionsToCsvRows } from '../utils/analytics';
 
 function balanceSheetTotalsFromSheet(data) {
   const totalAssets = (data?.assets || []).reduce((s, i) => s + (Number(i.value) || 0), 0);
@@ -117,6 +125,11 @@ function DashboardPage() {
   });
   const [prevMonthBalance, setPrevMonthBalance] = useState(null);
   const [pendingRecurringCount, setPendingRecurringCount] = useState(0);
+  const [pendingRecurringOutflow, setPendingRecurringOutflow] = useState(0);
+  const contentRef = useRef(null);
+  const addEntryRef = useRef(null);
+  const entriesRef = useRef(null);
+  const recurringRef = useRef(null);
   const [chartsExpandAll, setChartsExpandAll] = useState(false);
   const [expandAllGeneration, setExpandAllGeneration] = useState(0);
   const [lineChartFullWidth, setLineChartFullWidth] = useState(false);
@@ -223,10 +236,18 @@ function DashboardPage() {
     api
       .get('/recurring/pending', { params: { year, month } })
       .then((res) => {
-        if (!cancelled) setPendingRecurringCount(res.data.pending?.length || 0);
+        if (!cancelled) {
+          setPendingRecurringCount(res.data.pending?.length || 0);
+          setPendingRecurringOutflow(
+            (res.data.pending || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+          );
+        }
       })
       .catch(() => {
-        if (!cancelled) setPendingRecurringCount(0);
+        if (!cancelled) {
+          setPendingRecurringCount(0);
+          setPendingRecurringOutflow(0);
+        }
       });
     return () => {
       cancelled = true;
@@ -469,6 +490,59 @@ function DashboardPage() {
     }
   };
 
+  // ---- UI-only helpers (navigation, scrolling, downloads). None of these write data.
+  const scrollToRef = (ref) => {
+    const el = ref.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - 72;
+    window.scrollTo({ top, behavior: 'smooth' });
+  };
+
+  const goToAddEntry = () => {
+    if (viewMode !== 'monthly') setViewMode('monthly');
+    setTimeout(() => {
+      scrollToRef(addEntryRef);
+      const field = addEntryRef.current?.querySelector('input:not([type="checkbox"]), select');
+      field?.focus({ preventScroll: true });
+    }, viewMode !== 'monthly' ? 250 : 0);
+  };
+
+  const changePeriod = (y, m) => {
+    setYear(y);
+    setMonth(m);
+  };
+
+  const pickCategory = (name) => {
+    setSearchQuery(name || '');
+    setListFilter('all');
+    if (name) {
+      setEntriesExpanded(true);
+      setTimeout(() => scrollToRef(entriesRef), 50);
+    }
+  };
+
+  const monthName = new Date(2000, month - 1, 1).toLocaleString('en-US', { month: 'short' });
+
+  const handleExportMonthlyCsv = () => {
+    downloadCsv(`expense-control-${year}-${String(month).padStart(2, '0')}.csv`, transactionsToCsvRows(transactions));
+    toast.success(`Downloaded ${monthName} ${year} as CSV`);
+  };
+
+  const handleExportYearlyCsv = async () => {
+    try {
+      const all = await Promise.all(
+        Array.from({ length: 12 }, (_, i) =>
+          api.get('/transactions', { params: { year, month: i + 1 } }).then((r) => r.data?.transactions || [])
+        )
+      );
+      downloadCsv(`expense-control-${year}.csv`, transactionsToCsvRows(all.flat()));
+      toast.success(`Downloaded ${year} as CSV`);
+    } catch (err) {
+      console.error('CSV export failed', err);
+      toast.error('CSV export failed');
+    }
+  };
+
   const expenseAmount = monthlySummary?.totalExpense || 0;
   const investmentAmount = monthlySummary?.totalInvestment || 0;
   const totalForMonth = expenseAmount + investmentAmount; // Expense + Investment (calculated)
@@ -652,7 +726,7 @@ function DashboardPage() {
       lineChartFullWidth={lineChartFullWidth}
       setLineChartFullWidth={setLineChartFullWidth}
     >
-    <div className="app-shell">
+    <div className="app-shell has-bottom-nav">
       <header className="top-bar">
         <div>
           <h1 className="app-title">Expense Control</h1>
@@ -660,6 +734,29 @@ function DashboardPage() {
             Hi {displayName}, track your spending and investments.
           </p>
         </div>
+        <MobileHeaderActions
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          items={[
+            ...(viewMode === 'monthly'
+              ? [
+                  { label: exportingPdf ? 'Exporting…' : 'Export monthly PDF', onClick: handleExportMonthlyPdf, disabled: exportingPdf },
+                  { label: 'Download CSV', hint: `${monthName} ${year}`, onClick: handleExportMonthlyCsv, disabled: !transactions.length },
+                  'divider',
+                ]
+              : viewMode === 'yearly'
+                ? [
+                    { label: exportingPdf ? 'Exporting…' : 'Export yearly PDF', onClick: handleExportYearlyPdf, disabled: exportingPdf },
+                    { label: 'Download CSV', hint: String(year), onClick: handleExportYearlyCsv },
+                    'divider',
+                  ]
+                : []),
+            { label: 'Manage recurring', onClick: () => setRecurringModalOpen(true) },
+            { label: 'Manage categories', onClick: () => setCategoriesModalOpen(true) },
+            'divider',
+            { label: 'Logout', onClick: logout, danger: true },
+          ]}
+        />
         <div className="top-bar-actions">
           <button
             type="button"
@@ -695,7 +792,7 @@ function DashboardPage() {
         onSaved={() => setRecurringRefreshKey((k) => k + 1)}
       />
 
-      <main className="content">
+      <main className="content" ref={contentRef}>
         <section className="filters">
           <div className="view-toggle">
             <button
@@ -739,6 +836,11 @@ function DashboardPage() {
                 {exportingPdf ? 'Exporting…' : 'Export monthly PDF'}
               </button>
             )}
+            {viewMode === 'monthly' && (
+              <button type="button" className="ghost-btn" onClick={handleExportMonthlyCsv} disabled={!transactions.length}>
+                Download CSV
+              </button>
+            )}
             {viewMode === 'yearly' && (
               <button
                 type="button"
@@ -749,7 +851,20 @@ function DashboardPage() {
                 {exportingPdf ? 'Exporting…' : 'Export yearly PDF'}
               </button>
             )}
+            {viewMode === 'yearly' && (
+              <button type="button" className="ghost-btn" onClick={handleExportYearlyCsv}>
+                Download CSV
+              </button>
+            )}
           </div>
+
+          <MonthStepper
+            year={year}
+            month={month}
+            onChange={changePeriod}
+            mode={viewMode === 'yearly' || viewMode === 'review' ? 'year' : 'month'}
+            swipeTargetRef={contentRef}
+          />
 
           {viewMode === 'monthly' && (
               <div className="filter-group">
@@ -866,6 +981,23 @@ function DashboardPage() {
             totalDebtsPrev={prevMonthBalance?.totalDebts ?? null}
             loading={loading}
           />
+          <MonthGlance
+            year={year}
+            month={month}
+            inflow={cashflowAmount}
+            expense={expenseAmount}
+            investment={investmentAmount}
+            history={monthHistory}
+            pendingRecurring={pendingRecurringOutflow}
+            loading={loading}
+          />
+          <UpcomingBills
+            year={year}
+            month={month}
+            transactions={transactions}
+            refreshKey={recurringRefreshKey}
+            onGoToRecurring={() => scrollToRef(recurringRef)}
+          />
           <section className="monthly-overview">
               <div className="monthly-cashflow">
                 <CashInflowSection
@@ -944,6 +1076,7 @@ function DashboardPage() {
                 loading={historyLoading || loading}
               />
               <AlertsBanner alerts={monthAlerts} />
+              <div ref={recurringRef} className="recurring-anchor">
               <RecurringBanner
                 year={year}
                 month={month}
@@ -953,6 +1086,7 @@ function DashboardPage() {
                   setRecurringRefreshKey((k) => k + 1);
                 }}
               />
+              </div>
               <PortfolioAlignmentSection
                 year={year}
                 month={month}
@@ -966,8 +1100,10 @@ function DashboardPage() {
 
           <section className="dashboard-sections">
             <div className="content-block">
-              <TransactionForm onCreated={handleCreateTransaction} staticCategories={staticCategories} />
-              <div className={`card transactions-list${entriesExpanded ? ' entries-expanded' : ''}`}>
+              <div ref={addEntryRef} id="add-entry" className="add-entry-anchor">
+                <TransactionForm onCreated={handleCreateTransaction} staticCategories={staticCategories} />
+              </div>
+              <div ref={entriesRef} className={`card transactions-list${entriesExpanded ? ' entries-expanded' : ''}`}>
                 <div className="list-header">
                   <button
                     type="button"
@@ -1126,13 +1262,25 @@ function DashboardPage() {
                   <p className="muted small">No entries match the filter or search.</p>
                 )}
                 <ul>
-                  {filteredTransactions.map((tx) => (
-                    <li key={tx._id} className="tx-row">
+                  {groupByDay(filteredTransactions).map((group) => (
+                    <Fragment key={group.key}>
+                    <li className="tx-day-header" aria-label={dayLabel(group.date)}>
+                      <span className="tx-day-label">{dayLabel(group.date)}</span>
+                      <span className="tx-day-totals">
+                        {group.expense > 0 && <span className="tx-day-exp">−{inr(group.expense)}</span>}
+                        {group.investment > 0 && <span className="tx-day-inv">↗ {inr(group.investment)}</span>}
+                      </span>
+                    </li>
+                  {group.items.map((tx) => (
+                    <li key={tx._id} className={`tx-row tx-row-${tx.type}`}>
                       <div className="tx-main">
                         <span className={`tx-type tx-type-${tx.type}`}>
                           {tx.type === 'expense' ? 'Expense' : 'Investment'}
                         </span>
-                        <span className="tx-category">{tx.category}</span>
+                        <span className="tx-category">
+                          <i className="tx-cat-dot" style={{ background: colorFor(tx.tag || tx.category) }} aria-hidden="true" />
+                          {tx.category}
+                        </span>
                         {tx.tag && <span className="tx-tag">#{tx.tag}</span>}
                         {tx.type === 'expense' && tx.expenseEssential === 'essential' && (
                           <span className="tx-essential-pill">Essential</span>
@@ -1228,11 +1376,24 @@ function DashboardPage() {
                       )}
                     </li>
                   ))}
+                    </Fragment>
+                  ))}
                 </ul>
                   </>
                 )}
               </div>
             </div>
+            <MonthAnalytics
+              year={year}
+              month={month}
+              transactions={transactions}
+              history={monthHistory}
+              historyLoading={historyLoading}
+              inflows={monthInflows}
+              inflowTotal={cashflowAmount}
+              onPickCategory={pickCategory}
+              pickedCategory={searchQuery || null}
+            />
             <SpendingCalendar
               year={year}
               month={month}
@@ -1262,15 +1423,23 @@ function DashboardPage() {
                 }}
               />
             </div>
-            <ChartsExpandToggle />
-            <MonthlyCashInflowCharts inflows={monthInflows} year={year} month={month} />
-            <div className="charts-at-bottom">
-              <MonthlyCharts
-                monthSummary={monthlySummary}
-                comparison={monthlyComparison}
-                transactions={transactions}
-              />
-            </div>
+            <CollapsibleSection
+              id="classic-month-charts"
+              title="All detailed charts"
+              summary="Pie & bar breakdowns, used in the PDF export"
+              forceOpen={exportingPdf}
+              className="classic-charts-section"
+            >
+              <ChartsExpandToggle />
+              <MonthlyCashInflowCharts inflows={monthInflows} year={year} month={month} />
+              <div className="charts-at-bottom">
+                <MonthlyCharts
+                  monthSummary={monthlySummary}
+                  comparison={monthlyComparison}
+                  transactions={transactions}
+                />
+              </div>
+            </CollapsibleSection>
           </section>
           </div>
         )}
@@ -1413,6 +1582,9 @@ function DashboardPage() {
                 </div>
               )}
               {yearlySummary && (
+                <YearAnalytics year={year} yearlySummary={yearlySummary} yearlyCashflow={yearlyCashflowArray} />
+              )}
+              {yearlySummary && (
                 <MoneyFlowDiagram
                   id="money-flow-year"
                   title={`Money flow · ${yearlySummary.year}`}
@@ -1432,6 +1604,7 @@ function DashboardPage() {
           </section>
         )}
       </main>
+      <BottomNav viewMode={viewMode} onChange={setViewMode} onAdd={goToAddEntry} />
     </div>
     </ChartsExpandProvider>
   );

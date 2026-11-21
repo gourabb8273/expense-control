@@ -17,11 +17,14 @@ export default function CollapsibleSection({
   defaultOpen = false,
   className = '',
   headerExtra,
+  forceOpen = false,
   children,
   ...rest
 }) {
   const storageKey = `section-open:${id}`;
-  const [open, setOpen] = useState(() => readOpen(storageKey, defaultOpen));
+  const [openState, setOpen] = useState(() => readOpen(storageKey, defaultOpen));
+  // forceOpen lets callers (e.g. PDF export) render the body without changing the saved preference
+  const open = forceOpen || openState;
 
   const toggle = () => {
     setOpen((prev) => {
