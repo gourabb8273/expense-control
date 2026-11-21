@@ -207,7 +207,7 @@ export default function BalanceView({ year, month, refreshKey, tagsRefreshKey, o
           )}
         </VxCard>
 
-        <VxCard title={`Net worth, assets & debts · ${year}`} subtitle="Debts shown separately below so they stay readable" wide>
+        <VxCard title={`Net worth, assets & debts · ${year}`} subtitle="Debts on the right-hand scale so their paydown is visible" wide>
           {hasYear ? <NetWorthTrend rows={rows} stop={stop || 12} highlight={month - 1} /> : <EmptyChart text="No balance sheet saved this year." />}
         </VxCard>
       </div>

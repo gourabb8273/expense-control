@@ -29,6 +29,9 @@ export default function NetWorthTrend({ rows, stop = 12 }) {
         series={[
           { key: 'a', label: 'Assets', color: '#06b6d4', values: assets, stopAt: stop, width: 1.75 },
           { key: 'n', label: 'Net worth', color: '#22c55e', values: net, stopAt: stop, area: true, endDot: true, width: 2.75 },
+          ...(debtsSoFar.some(Boolean)
+            ? [{ key: 'd', label: 'Debts', color: '#f43f5e', values: debts, stopAt: stop, endDot: true, width: 2.25, dashed: true, axis: 'right' }]
+            : []),
         ]}
         format={fmt}
         compact={compact}
@@ -39,7 +42,7 @@ export default function NetWorthTrend({ rows, stop = 12 }) {
         items={[
           { label: 'Net worth', color: '#22c55e' },
           { label: 'Assets', color: '#06b6d4', line: true },
-          { label: 'Debts (chart below)', color: '#f43f5e' },
+          ...(debtsSoFar.some(Boolean) ? [{ label: 'Debts (right axis)', color: '#f43f5e', dashed: true }] : []),
         ]}
       />
       {debtsSoFar.some(Boolean) && (
@@ -56,16 +59,6 @@ export default function NetWorthTrend({ rows, stop = 12 }) {
               </small>
             )}
           </span>
-          {/* Own scale (not from zero) so month-to-month paydown is visible, like the assets line */}
-          <LineAreaChart
-            labels={MONTH_LABELS}
-            series={[{ key: 'd', label: 'Debts', color: '#f43f5e', values: debts, stopAt: stop, area: true, endDot: true, width: 2.5 }]}
-            format={fmt}
-            compact={compact}
-            hideAmounts={hideAmounts}
-            height={160}
-            yMin={niceFloor(Math.min(...debtsSoFar.filter((v) => v > 0)) * 0.85)}
-          />
           {!hideAmounts && paidRows.length > 0 && (
             <div className="nw-debt-steps">
               {paidRows.map((r) => (

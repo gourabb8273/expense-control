@@ -19,13 +19,15 @@ export default function LineAreaChart({
   const [ref, width] = useElementWidth();
   const { wrapRef, show, hide, node } = useTooltip();
   const [hoverIdx, setHoverIdx] = useState(null);
-  const pad = { l: hideAmounts ? 12 : 52, r: 14, t: 12, b: 26 };
+  const rightSeries = useMemo(() => series.filter((s) => s.axis === 'right'), [series]);
+  const hasRight = rightSeries.length > 0;
+  const pad = { l: hideAmounts ? 12 : 52, r: hasRight && !hideAmounts ? 50 : 14, t: 12, b: 26 };
   const n = labels.length;
   const iw = width - pad.l - pad.r;
   const ih = height - pad.t - pad.b;
 
   const { max, min, tickVals } = useMemo(() => {
-    const all = series.flatMap((s) => s.values.slice(0, s.stopAt ?? s.values.length));
+    const all = series.filter((s) => s.axis !== 'right').flatMap((s) => s.values.slice(0, s.stopAt ?? s.values.length));
     if (refLine?.value) all.push(refLine.value);
     const hiVal = Math.max(0, ...all) * 1.04;
     const loVal = yMin != null ? yMin : Math.min(0, ...all);
@@ -36,12 +38,27 @@ export default function LineAreaChart({
     return { min: lo, max: lo + step * count, tickVals: Array.from({ length: count + 1 }, (_, i) => lo + step * i) };
   }, [series, refLine, yMin]);
 
-  const x = (i) => pad.l + (n <= 1 ? iw / 2 : (i / (n - 1)) * iw);
-  const y = (v) => pad.t + ih - ((v - min) / (max - min || 1)) * ih;
+  // Optional right-hand axis (own scale) — e.g. debts next to assets/net worth, same chart
+  const right = useMemo(() => {
+    if (!hasRight) return null;
+    const vals = rightSeries.flatMap((s) => s.values.slice(0, s.stopAt ?? s.values.length)).filter((v) => v > 0);
+    if (!vals.length) return { min: 0, max: 1, ticks: [0, 1] };
+    const hiV = Math.max(...vals) * 1.04;
+    const loV = Math.min(...vals) * 0.8;
+    const step = niceMax((hiV - loV) / (tickVals.length - 1 || 4) || 1);
+    const lo = Math.max(0, Math.floor(loV / step) * step);
+    return { min: lo, max: lo + step * (tickVals.length - 1), ticks: tickVals.map((_, i) => lo + step * i) };
+  }, [hasRight, rightSeries, tickVals]);
 
-  const path = (vals, stopAt) => {
+  const x = (i) => pad.l + (n <= 1 ? iw / 2 : (i / (n - 1)) * iw);
+  const yL = (v) => pad.t + ih - ((v - min) / (max - min || 1)) * ih;
+  const yR = (v) => pad.t + ih - ((v - right.min) / (right.max - right.min || 1)) * ih;
+  const y = yL;
+  const yOf = (s) => (s.axis === 'right' && right ? yR : yL);
+
+  const path = (vals, stopAt, yf = yL) => {
     const pts = vals.slice(0, stopAt ?? vals.length);
-    return pts.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+    return pts.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${yf(v).toFixed(1)}`).join('');
   };
 
   const onMove = (evt) => {
@@ -88,6 +105,12 @@ export default function LineAreaChart({
             </g>
           );
         })}
+        {right && !hideAmounts &&
+          right.ticks.map((v) => (
+            <text key={`r${v}`} x={width - pad.r + 6} y={yR(v) + 4} textAnchor="start" className="vx-axis" style={{ fill: rightSeries[0].color }}>
+              {compact(v)}
+            </text>
+          ))}
         {labels.map((l, i) =>
           i % labelEvery === 0 || i === n - 1 ? (
             <text key={l} x={x(i)} y={height - 6} textAnchor="middle" className="vx-axis">
@@ -99,7 +122,7 @@ export default function LineAreaChart({
           s.area ? (
             <path
               key={`${s.key}-area`}
-              d={`${path(s.values, s.stopAt)}L${x((s.stopAt ?? s.values.length) - 1)},${y(Math.max(min, 0))}L${x(0)},${y(Math.max(min, 0))}Z`}
+              d={`${path(s.values, s.stopAt, yOf(s))}L${x((s.stopAt ?? s.values.length) - 1)},${pad.t + ih}L${x(0)},${pad.t + ih}Z`}
               fill={s.color}
               opacity={0.14}
             />
@@ -116,7 +139,7 @@ export default function LineAreaChart({
         {series.map((s) => (
           <path
             key={s.key}
-            d={path(s.values, s.stopAt)}
+            d={path(s.values, s.stopAt, yOf(s))}
             fill="none"
             stroke={s.color}
             strokeWidth={s.width || 2.25}
@@ -128,7 +151,7 @@ export default function LineAreaChart({
         {series.map((s) => {
           const last = (s.stopAt ?? s.values.length) - 1;
           if (!s.endDot || last < 0) return null;
-          return <circle key={`${s.key}-dot`} cx={x(last)} cy={y(s.values[last])} r={4} fill={s.color} stroke="var(--card-bg)" strokeWidth={2} />;
+          return <circle key={`${s.key}-dot`} cx={x(last)} cy={yOf(s)(s.values[last])} r={4} fill={s.color} stroke="var(--card-bg)" strokeWidth={2} />;
         })}
         {marker != null && (
           <g>
