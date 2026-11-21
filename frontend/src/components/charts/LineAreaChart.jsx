@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
+
+const ok = (v) => v != null && Number.isFinite(v);
 import { useElementWidth, useTooltip, niceMax } from './chartUtils';
 
 /**
@@ -27,7 +29,7 @@ export default function LineAreaChart({
   const ih = height - pad.t - pad.b;
 
   const { max, min, tickVals } = useMemo(() => {
-    const all = series.filter((s) => s.axis !== 'right').flatMap((s) => s.values.slice(0, s.stopAt ?? s.values.length));
+    const all = series.filter((s) => s.axis !== 'right').flatMap((s) => s.values.slice(0, s.stopAt ?? s.values.length)).filter(ok);
     if (refLine?.value) all.push(refLine.value);
     const hiVal = Math.max(0, ...all) * 1.04;
     const loVal = yMin != null ? yMin : Math.min(0, ...all);
@@ -41,10 +43,11 @@ export default function LineAreaChart({
   // Optional right-hand axis (own scale) — e.g. debts next to assets/net worth, same chart
   const right = useMemo(() => {
     if (!hasRight) return null;
-    const vals = rightSeries.flatMap((s) => s.values.slice(0, s.stopAt ?? s.values.length)).filter((v) => v > 0);
+    const vals = rightSeries.flatMap((s) => s.values.slice(0, s.stopAt ?? s.values.length)).filter(ok);
     if (!vals.length) return { min: 0, max: 1, ticks: [0, 1] };
     const hiV = Math.max(...vals) * 1.04;
     const loV = Math.min(...vals) * 0.8;
+    if (hiV <= 0) return { min: 0, max: 1, ticks: tickVals.map((_, i) => i / (tickVals.length - 1 || 1)) };
     const step = niceMax((hiV - loV) / (tickVals.length - 1 || 4) || 1);
     const lo = Math.max(0, Math.floor(loV / step) * step);
     return { min: lo, max: lo + step * (tickVals.length - 1), ticks: tickVals.map((_, i) => lo + step * i) };
@@ -57,9 +60,27 @@ export default function LineAreaChart({
   const yOf = (s) => (s.axis === 'right' && right ? yR : yL);
 
   const path = (vals, stopAt, yf = yL) => {
+    // null = no data for that month: the line breaks instead of diving to zero
     const pts = vals.slice(0, stopAt ?? vals.length);
-    return pts.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${yf(v).toFixed(1)}`).join('');
+    let pen = false;
+    return pts
+      .map((v, i) => {
+        if (!ok(v)) {
+          pen = false;
+          return '';
+        }
+        const cmd = `${pen ? 'L' : 'M'}${x(i).toFixed(1)},${yf(v).toFixed(1)}`;
+        pen = true;
+        return cmd;
+      })
+      .join('');
   };
+  const lastIdx = (s) => {
+    for (let i = (s.stopAt ?? s.values.length) - 1; i >= 0; i -= 1) if (ok(s.values[i])) return i;
+    return -1;
+  };
+  const firstIdx = (s) => s.values.findIndex(ok);
+  const clipId = `clip-${useId().replace(/:/g, '')}`;
 
   const onMove = (evt) => {
     const box = evt.currentTarget.getBoundingClientRect();
@@ -71,7 +92,7 @@ export default function LineAreaChart({
       <>
         <strong>{labels[i]}</strong>
         {series.map((s) =>
-          i < (s.stopAt ?? s.values.length) ? (
+          i < (s.stopAt ?? s.values.length) && ok(s.values[i]) ? (
             <span key={s.key} className="vx-tip-row">
               <i style={{ background: s.color }} />
               {s.label}: <b>{format(s.values[i])}</b>
@@ -118,11 +139,17 @@ export default function LineAreaChart({
             </text>
           ) : null
         )}
+        <defs>
+          <clipPath id={clipId}>
+            <rect x={pad.l - 6} y={pad.t - 6} width={iw + 12} height={ih + 12} />
+          </clipPath>
+        </defs>
         {series.map((s) =>
           s.area ? (
             <path
               key={`${s.key}-area`}
-              d={`${path(s.values, s.stopAt, yOf(s))}L${x((s.stopAt ?? s.values.length) - 1)},${pad.t + ih}L${x(0)},${pad.t + ih}Z`}
+              d={lastIdx(s) < 0 ? '' : `${path(s.values, s.stopAt, yOf(s))}L${x(lastIdx(s))},${pad.t + ih}L${x(firstIdx(s))},${pad.t + ih}Z`}
+              clipPath={`url(#${clipId})`}
               fill={s.color}
               opacity={0.14}
             />
@@ -140,6 +167,7 @@ export default function LineAreaChart({
           <path
             key={s.key}
             d={path(s.values, s.stopAt, yOf(s))}
+            clipPath={`url(#${clipId})`}
             fill="none"
             stroke={s.color}
             strokeWidth={s.width || 2.25}
@@ -149,7 +177,7 @@ export default function LineAreaChart({
           />
         ))}
         {series.map((s) => {
-          const last = (s.stopAt ?? s.values.length) - 1;
+          const last = lastIdx(s);
           if (!s.endDot || last < 0) return null;
           return <circle key={`${s.key}-dot`} cx={x(last)} cy={yOf(s)(s.values[last])} r={4} fill={s.color} stroke="var(--card-bg)" strokeWidth={2} />;
         })}
