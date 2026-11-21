@@ -1740,3 +1740,30 @@ body.sheet-open {
 .bs-gone {
   color: var(--text-muted);
 }
+.nw-debt-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+.nw-debt-step {
+  font-size: 0.68rem;
+  font-weight: 650;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.nw-debt-step.good {
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.12);
+}
+.nw-debt-step.bad {
+  color: #fb7185;
+  background: rgba(244, 63, 94, 0.12);
+}
+[data-theme='light'] .nw-debt-step.good {
+  color: #15803d;
+}
+[data-theme='light'] .nw-debt-step.bad {
+  color: #be123c;
+}
