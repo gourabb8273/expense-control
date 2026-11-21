@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import { useFormatMoney } from '../utils/formatMoney';
 import { MONTH_LABELS, TYPE_COLORS, daysInMonth, totalsByKey, txDay } from '../utils/analytics';
 import { VxCard, Legend, Segmented, EmptyChart } from './charts/ChartKit';
-import { niceFloor } from './charts/chartUtils';
+import NetWorthTrend from './NetWorthTrend';
 import LineAreaChart from './charts/LineAreaChart';
 import { MonthBars } from './charts/BarCharts';
 import { CategoryMonthHeatmap, YearCalendarHeatmap } from './charts/HeatCharts';
@@ -102,6 +102,7 @@ export default function YearAnalytics({ year, yearlySummary, yearlyCashflow }) {
     const rows = Array.from({ length: 12 }, (_, i) => balance[i + 1] || { totalAssets: 0, totalDebts: 0, netWorth: 0 });
     if (!rows.some((r) => r.totalAssets || r.totalDebts)) return null;
     return {
+      rows,
       assets: rows.map((r) => r.totalAssets || 0),
       debts: rows.map((r) => r.totalDebts || 0),
       net: rows.map((r) => r.netWorth || 0),
@@ -163,23 +164,7 @@ export default function YearAnalytics({ year, yearlySummary, yearlyCashflow }) {
             title="Net worth"
             subtitle={`${nwChange >= 0 ? '▲' : '▼'} ${hideAmounts ? '' : fmt(Math.abs(nwChange))} since Jan${hideAmounts ? '' : ` · debts now ${compact(nw.debts[stop - 1])}`}`}
           >
-            <LineAreaChart
-              labels={MONTH_LABELS}
-              series={[
-                { key: 'a', label: 'Assets', color: '#06b6d4', values: nw.assets, stopAt: stop, width: 1.75 },
-                { key: 'n', label: 'Net worth', color: '#22c55e', values: nw.net, stopAt: stop, area: true, endDot: true, width: 2.75 },
-              ]}
-              format={fmt}
-              compact={compact}
-              hideAmounts={hideAmounts}
-              yMin={niceFloor(Math.min(...nw.net.slice(0, stop)) * 0.9)}
-            />
-            <Legend
-              items={[
-                { label: 'Net worth', color: '#22c55e' },
-                { label: 'Assets', color: '#06b6d4', line: true },
-              ]}
-            />
+            <NetWorthTrend rows={nw.rows} stop={stop} highlight={year === today.getFullYear() ? lastMonth - 1 : null} />
           </VxCard>
         )}
 

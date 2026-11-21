@@ -14,8 +14,9 @@ import {
 } from '../utils/analytics';
 import { VxCard, Legend, Segmented, EmptyChart } from './charts/ChartKit';
 import LineAreaChart from './charts/LineAreaChart';
-import { CompareBars, Waterfall } from './charts/BarCharts';
-import { Sankey, Treemap } from './charts/FlowCharts';
+import { CompareBars } from './charts/BarCharts';
+import { Treemap } from './charts/FlowCharts';
+import { FlowBars, ChangeList } from './charts/FlowBars';
 
 /** Read-only visual analytics for one month. Uses only data already loaded by the dashboard. */
 export default function MonthAnalytics({ year, month, transactions, history, historyLoading, inflows, inflowTotal, onPickCategory, pickedCategory }) {
@@ -59,40 +60,32 @@ export default function MonthAnalytics({ year, month, transactions, history, his
   }, [transactions, compareTo, txType, groupBy]);
   const typeTotal = sumBy(transactions, txType);
 
-  // ---- What changed (waterfall)
-  const waterfall = useMemo(() => {
+  // ---- What changed vs last month
+  const changes = useMemo(() => {
     if (!prevMonth) return null;
-    const rows = compareCategories(transactions, prevMonth.transactions, { type: 'expense', key: 'category' });
+    const rows = compareCategories(transactions, prevMonth.transactions, { type: 'expense', key: 'category' }).filter((r) => Math.abs(r.delta) >= 1);
     const start = sumBy(prevMonth.transactions, 'expense');
     const end = sumBy(transactions, 'expense');
-    const sorted = rows.slice().sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-    const top = sorted.slice(0, 5).filter((r) => Math.abs(r.delta) > 0);
-    const restDelta = end - start - top.reduce((s, r) => s + r.delta, 0);
-    const steps = top.map((r) => ({ name: r.name, delta: r.delta }));
-    if (Math.abs(restDelta) >= 1) steps.push({ name: 'Everything else', delta: restDelta });
-    return { start, end, steps, biggest: top[0] };
+    return { rows, start, end, diff: end - start };
   }, [transactions, prevMonth]);
 
-  // ---- Sankey
-  const sankey = useMemo(() => {
+  // ---- Money flow (stacked bar + breakdown)
+  const flow = useMemo(() => {
     const exp = sumBy(transactions, 'expense');
     const inv = sumBy(transactions, 'investment');
-    const srcRows = (inflows || []).filter((r) => Number(r.amount) > 0).map((r) => ({ name: r.label || 'Inflow', value: Number(r.amount), color: TYPE_COLORS.inflow }));
-    let sources = srcRows.length ? srcRows : inflowTotal > 0 ? [{ name: 'Inflow', value: inflowTotal, color: TYPE_COLORS.inflow }] : [];
-    const totalIn = sources.reduce((s, r) => s + r.value, 0);
-    if (exp + inv > totalIn) sources = [...sources, { name: 'From savings', value: exp + inv - totalIn, color: '#94a3b8' }];
-    const leaves = (type) => {
-      const rows = Array.from(totalsByKey(transactions, { type, key: 'category' }), ([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value);
-      const top = topWithOther(rows, type === 'expense' ? 6 : 3);
-      return top.map((r) => ({ ...r, color: r.isOther ? '#64748b' : colorFor(r.name) }));
-    };
-    const buckets = [];
-    if (exp > 0) buckets.push({ name: 'Expenses', value: exp, color: TYPE_COLORS.expense, children: leaves('expense') });
-    if (inv > 0) buckets.push({ name: 'Invested', value: inv, color: TYPE_COLORS.investment, children: leaves('investment') });
-    const left = totalIn - exp - inv;
-    if (left > 0) buckets.push({ name: 'Left', value: left, color: TYPE_COLORS.saved, children: [{ name: 'Unspent', value: left, color: TYPE_COLORS.saved }] });
-    return { sources, buckets, ok: sources.length > 0 && buckets.length > 0 };
+    const inflowSum = (inflows || []).reduce((sum, r) => sum + (Number(r.amount) || 0), 0) || inflowTotal || 0;
+    const kids = (type) =>
+      topWithOther(
+        Array.from(totalsByKey(transactions, { type, key: 'category' }), ([name, value]) => ({ name, value })).sort((x, y) => y.value - x.value),
+        6
+      ).map((r) => ({ ...r, color: r.isOther ? '#64748b' : colorFor(r.name) }));
+    const parts = [
+      { key: 'exp', label: 'Spent', value: exp, color: TYPE_COLORS.expense, children: kids('expense') },
+      { key: 'inv', label: 'Invested', value: inv, color: TYPE_COLORS.investment, children: kids('investment') },
+    ];
+    const left = inflowSum - exp - inv;
+    if (left > 0) parts.push({ key: 'left', label: 'Left', value: left, color: TYPE_COLORS.saved });
+    return { inflow: inflowSum, parts, ok: exp + inv > 0 || inflowSum > 0 };
   }, [transactions, inflows, inflowTotal]);
 
   // ---- Treemap (tag → category)
@@ -205,31 +198,25 @@ export default function MonthAnalytics({ year, month, transactions, history, his
           )}
         </VxCard>
 
-        {waterfall && waterfall.steps.length > 0 && (
+        {changes && changes.rows.length > 0 && (
           <VxCard
-            title={`What changed since ${prevLabel}`}
+            title={`Compared with ${prevLabel}`}
             subtitle={
-              waterfall.biggest
-                ? `Biggest move: ${waterfall.biggest.name} ${waterfall.biggest.delta > 0 ? '▲' : '▼'}${hideAmounts ? '' : ` ${fmt(Math.abs(waterfall.biggest.delta))}`}`
-                : ''
+              hideAmounts
+                ? `You spent ${changes.diff > 0 ? 'more' : 'less'} than ${prevLabel}`
+                : `You spent ${fmt(Math.abs(changes.diff))} ${changes.diff > 0 ? 'more' : 'less'} than ${prevLabel} (${fmt(changes.start)} → ${fmt(changes.end)})`
             }
           >
-            <Waterfall
-              start={waterfall.start}
-              end={waterfall.end}
-              steps={waterfall.steps}
-              startLabel={`${prevLabel} spend`}
-              endLabel={`${MONTH_LABELS[month - 1]} spend`}
-              format={fmt}
-              compact={compact}
-              hideAmounts={hideAmounts}
-            />
+            <ChangeList rows={changes.rows} format={fmt} hideAmounts={hideAmounts} />
           </VxCard>
         )}
 
-        <VxCard title="Money flow" subtitle="Inflow → spend / invest / left → categories" wide>
-          {sankey.ok ? (
-            <Sankey sources={sankey.sources} buckets={sankey.buckets} format={fmt} hideAmounts={hideAmounts} />
+        <VxCard
+          title="Money flow"
+          subtitle={flow.inflow > 0 ? `Where this month’s ${compact(flow.inflow)} inflow went · tap a part for details` : 'Spent vs invested this month'}
+        >
+          {flow.ok ? (
+            <FlowBars inflow={flow.inflow} parts={flow.parts} format={fmt} compact={compact} hideAmounts={hideAmounts} />
           ) : (
             <EmptyChart text="Add inflow and entries to see the flow." />
           )}

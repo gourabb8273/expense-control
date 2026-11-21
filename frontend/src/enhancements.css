@@ -1015,7 +1015,7 @@ line.vx-gridline {
     bottom: 0;
     z-index: 200;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     align-items: end;
     padding: 0.35rem 0.4rem calc(0.4rem + env(safe-area-inset-bottom, 0px));
     background: var(--nav-bg);
@@ -1034,8 +1034,9 @@ line.vx-gridline {
     border-radius: 0.75rem;
     background: transparent;
     color: var(--text-muted);
-    font-size: 0.66rem;
+    font-size: 0.62rem;
     font-weight: 600;
+    min-width: 0;
   }
   .bottom-nav-tab.is-active {
     color: var(--text);
@@ -1310,4 +1311,432 @@ body.sheet-open {
   to {
     opacity: 1;
   }
+}
+
+/* ---------- Glance: clear "left" maths ---------- */
+.glance-equation {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.glance-steps {
+  display: flex;
+  flex-direction: column;
+  border-radius: 0.75rem;
+  border: 1px solid var(--kpi-border);
+  background: var(--kpi-bg);
+  overflow: hidden;
+}
+.glance-step {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+.glance-step + .glance-step {
+  border-top: 1px solid var(--border-subtle);
+}
+.glance-step b {
+  color: var(--text);
+  font-weight: 650;
+  white-space: nowrap;
+}
+.glance-step b.neg {
+  color: var(--bad);
+}
+.glance-step-strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.glance-step-strong b {
+  color: #4ade80;
+  font-weight: 800;
+}
+[data-theme='light'] .glance-step-strong b {
+  color: #16a34a;
+}
+
+/* ---------- Money flow (stacked bar) ---------- */
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.flow-bar {
+  display: flex;
+  height: 22px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--vx-heat-empty);
+  gap: 2px;
+}
+.flow-seg {
+  height: 100%;
+  min-width: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  opacity: 0.75;
+}
+.flow-seg.is-active {
+  opacity: 1;
+}
+.flow-warn {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--bad);
+}
+.flow-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+.flow-chip {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  grid-template-areas: 'dot label' 'val val' 'pct pct';
+  align-items: center;
+  gap: 0.1rem 0.4rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--kpi-border);
+  background: var(--kpi-bg);
+  color: var(--text);
+  text-align: left;
+}
+.flow-chip:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.flow-chip.is-active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.flow-chip i {
+  grid-area: dot;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+.flow-chip-label {
+  grid-area: label;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.flow-chip b {
+  grid-area: val;
+  font-size: 1rem;
+}
+.flow-chip small {
+  grid-area: pct;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+.flow-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.flow-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.flow-list-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+.flow-list-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flow-list-name i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+.flow-list-val {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.flow-list-val small {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.flow-list-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--vx-heat-empty);
+}
+.flow-list-track span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+/* ---------- Compared with last month ---------- */
+.chg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.chg ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.chg-head {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.chg-head.up {
+  color: #fb7185;
+}
+.chg-head.down {
+  color: #4ade80;
+}
+.chg-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+.chg-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+}
+.chg-name {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chg-delta {
+  font-weight: 750;
+  white-space: nowrap;
+}
+.chg-row.up .chg-delta {
+  color: #fb7185;
+}
+.chg-row.down .chg-delta {
+  color: #4ade80;
+}
+.chg-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--vx-heat-empty);
+}
+.chg-track span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+.chg-row.up .chg-track span {
+  background: #f43f5e;
+}
+.chg-row.down .chg-track span {
+  background: #22c55e;
+}
+.chg-detail {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* ---------- Net worth: debts panel ---------- */
+.nw-debts {
+  margin-top: 0.4rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--border-subtle);
+}
+.nw-debts-title {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fb7185;
+  margin-bottom: 0.2rem;
+}
+.nw-debts-title small {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ---------- Balance sheet tab ---------- */
+.balance-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+}
+.bs-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  position: relative;
+  overflow: hidden;
+}
+.bs-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, #06b6d4, #22c55e);
+}
+.bs-hero-deltas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.bs-delta {
+  font-size: 0.74rem;
+  font-weight: 650;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: var(--vx-heat-empty);
+  white-space: nowrap;
+}
+.bs-delta.good {
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.12);
+}
+.bs-delta.bad {
+  color: #fb7185;
+  background: rgba(244, 63, 94, 0.12);
+}
+[data-theme='light'] .bs-delta.good {
+  color: #15803d;
+}
+[data-theme='light'] .bs-delta.bad {
+  color: #be123c;
+}
+.bs-hero .glance-tile .bs-delta {
+  align-self: flex-start;
+  margin-top: 0.2rem;
+  font-size: 0.66rem;
+}
+.bs-carried {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--warn);
+}
+.bs-hero-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.bs-asset {
+  color: #22d3ee;
+}
+.bs-debt {
+  color: #fb7185;
+}
+[data-theme='light'] .bs-asset {
+  color: #0891b2;
+}
+[data-theme='light'] .bs-debt {
+  color: #e11d48;
+}
+.bs-ratio {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.bs-ratio-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(6, 182, 212, 0.25);
+  overflow: hidden;
+}
+.bs-ratio-bar span {
+  display: block;
+  height: 100%;
+  background: #f43f5e;
+}
+.bs-ratio small {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.bs-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.bs-lines li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.bs-lines li:first-child {
+  border-top: none;
+}
+.bs-line-name {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.bs-line-name i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+.bs-line-name > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.bs-line-name small {
+  font-weight: 400;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.bs-line-vals {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+}
+.bs-line-vals b {
+  font-size: 0.92rem;
+}
+.bs-line-vals small {
+  font-size: 0.72rem;
+}
+.bs-line-vals small.good {
+  color: #4ade80;
+}
+.bs-line-vals small.bad {
+  color: #fb7185;
+}
+.bs-new {
+  color: var(--accent);
+}
+.bs-gone {
+  color: var(--text-muted);
 }

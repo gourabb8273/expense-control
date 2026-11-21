@@ -4,7 +4,7 @@ import { useElementWidth, useTooltip, niceMax } from './chartUtils';
  * Sorted horizontal bars with direct labels and a ghost marker for last month.
  * rows: [{ name, value, prev?, color }]
  */
-export function CompareBars({ rows, format, total, hideAmounts, onSelect, selected }) {
+export function CompareBars({ rows, format, total, hideAmounts, onSelect, selected, upIsGood = false }) {
   const max = niceMax(Math.max(1, ...rows.map((r) => Math.max(r.value, r.prev || 0))));
   return (
     <ul className="vx-hbars">
@@ -37,7 +37,7 @@ export function CompareBars({ rows, format, total, hideAmounts, onSelect, select
                 )}
               </span>
               {delta != null && r.prev > 0 && Math.abs(delta) >= 1 && (
-                <span className={`vx-hbar-delta ${delta > 0 ? 'up' : 'down'}`}>
+                <span className={`vx-hbar-delta ${(delta > 0) !== upIsGood ? 'up' : 'down'}`}>
                   {delta > 0 ? '▲' : '▼'} {hideAmounts ? '' : format(Math.abs(delta))}
                   {deltaPct != null && Math.abs(deltaPct) < 1000 ? ` (${delta > 0 ? '+' : ''}${deltaPct}%)` : ''} vs last month
                 </span>
@@ -164,7 +164,7 @@ export function MonthBars({ labels, values, color, format, compact, hideAmounts,
             >
               <rect x={pad.l + bw * i} y={pad.t} width={bw} height={ih} fill="transparent" />
               <rect x={pad.l + bw * i + bw * 0.2} y={yTop} width={bw * 0.6} height={Math.max(v ? 2 : 0, h)} rx={3} fill={c} opacity={highlight == null || highlight === i ? 1 : 0.45} />
-              {!hideAmounts && v !== 0 && bw > 22 && (
+              {!hideAmounts && v !== 0 && (compact(v).length * 6.2 <= bw + 4 || i === highlight) && (
                 <text x={cx} y={v >= 0 ? yTop - 4 : yTop + h + 11} textAnchor="middle" className="vx-axis vx-bar-val">
                   {compact(v)}
                 </text>

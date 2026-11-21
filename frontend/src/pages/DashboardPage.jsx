@@ -40,6 +40,7 @@ import UpcomingBills from '../components/UpcomingBills';
 import CollapsibleSection from '../components/CollapsibleSection';
 import { BottomNav, MonthStepper } from '../components/MobileNav';
 import MobileHeaderActions from '../components/MobileHeaderActions';
+import BalanceView from '../components/BalanceView';
 import { colorFor, dayLabel, downloadCsv, groupByDay, transactionsToCsvRows } from '../utils/analytics';
 
 function balanceSheetTotalsFromSheet(data) {
@@ -818,6 +819,13 @@ function DashboardPage() {
             </button>
             <button
               type="button"
+              className={viewMode === 'balance' ? 'primary-btn' : 'ghost-btn'}
+              onClick={() => setViewMode('balance')}
+            >
+              Balance sheet
+            </button>
+            <button
+              type="button"
               className={viewMode === 'review' ? 'primary-btn' : 'ghost-btn'}
               onClick={() => setViewMode('review')}
             >
@@ -927,7 +935,7 @@ function DashboardPage() {
             </div>
           )}
 
-          {viewMode === 'portfolio' && (
+          {(viewMode === 'portfolio' || viewMode === 'balance') && (
             <>
               <div className="filter-group">
                 <label>
@@ -1066,15 +1074,6 @@ function DashboardPage() {
                   )}
                 </div>
               </div>
-              <InsightsCard
-                year={year}
-                month={month}
-                transactions={transactions}
-                inflow={cashflowAmount}
-                expense={expenseAmount}
-                previous={monthHistory[0]}
-                loading={historyLoading || loading}
-              />
               <AlertsBanner alerts={monthAlerts} />
               <div ref={recurringRef} className="recurring-anchor">
               <RecurringBanner
@@ -1099,6 +1098,18 @@ function DashboardPage() {
           </section>
 
           <section className="dashboard-sections">
+            <div className="balance-sheet-month-wrap">
+              <BalanceSheetSection
+                year={year}
+                month={month}
+                tagsRefreshKey={tagsRefreshKey}
+                onMetaChange={setBalanceSheetMeta}
+                onSaved={() => {
+                  setBalanceSheetRefreshKey((k) => k + 1);
+                  toast.success('Balance sheet saved');
+                }}
+              />
+            </div>
             <div className="content-block">
               <div ref={addEntryRef} id="add-entry" className="add-entry-anchor">
                 <TransactionForm onCreated={handleCreateTransaction} staticCategories={staticCategories} />
@@ -1411,18 +1422,6 @@ function DashboardPage() {
               expenseCategories={monthFlowCategories.expense}
               investmentCategories={monthFlowCategories.investment}
             />
-            <div className="balance-sheet-month-wrap">
-              <BalanceSheetSection
-                year={year}
-                month={month}
-                tagsRefreshKey={tagsRefreshKey}
-                onMetaChange={setBalanceSheetMeta}
-                onSaved={() => {
-                  setBalanceSheetRefreshKey((k) => k + 1);
-                  toast.success('Balance sheet saved');
-                }}
-              />
-            </div>
             <CollapsibleSection
               id="classic-month-charts"
               title="All detailed charts"
@@ -1440,11 +1439,34 @@ function DashboardPage() {
                 />
               </div>
             </CollapsibleSection>
+            <InsightsCard
+                year={year}
+                month={month}
+                transactions={transactions}
+                inflow={cashflowAmount}
+                expense={expenseAmount}
+                previous={monthHistory[0]}
+                loading={historyLoading || loading}
+              />
           </section>
           </div>
         )}
 
         {viewMode === 'review' && <YearInReview key={year} year={year} />}
+
+        {viewMode === 'balance' && (
+          <BalanceView
+            year={year}
+            month={month}
+            refreshKey={balanceSheetRefreshKey}
+            tagsRefreshKey={tagsRefreshKey}
+            onMetaChange={setBalanceSheetMeta}
+            onSaved={() => {
+              setBalanceSheetRefreshKey((k) => k + 1);
+              toast.success('Balance sheet saved');
+            }}
+          />
+        )}
 
         {viewMode === 'portfolio' && (
           <section className="dashboard-sections portfolio-view-page">

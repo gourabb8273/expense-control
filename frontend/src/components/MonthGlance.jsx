@@ -9,7 +9,8 @@ import { Sparkline } from './charts/BarCharts';
  */
 export default function MonthGlance({ year, month, inflow, expense, investment, history, pendingRecurring = 0, loading }) {
   const { inr, compact, hideAmounts } = useFormatMoney();
-  const s = safeToSpend({ inflow, expense, investment, pendingRecurring, year, month });
+  // left = inflow − expense − investment (same as the app's “Remaining”); bills are subtracted separately below
+  const s = safeToSpend({ inflow, expense, investment, year, month });
 
   const trend = useMemo(() => {
     const past = (history || []).slice().reverse();
@@ -30,21 +31,11 @@ export default function MonthGlance({ year, month, inflow, expense, investment, 
   const spendPct = avgExp > 0 ? Math.round((expense / avgExp) * 100) : null;
   const ahead = spendPct != null && s.isCurrent && spendPct > timePct + 8;
 
-  let headline;
+  const afterBills = s.left - pendingRecurring;
   let tone = 'good';
-  if (!inflow) {
-    headline = 'Add this month’s inflow to see what’s safe to spend';
-    tone = 'neutral';
-  } else if (s.isPast) {
-    headline = s.left >= 0 ? `${inr(s.left)} left over` : `${inr(Math.abs(s.left))} overspent`;
-    tone = s.left >= 0 ? 'good' : 'bad';
-  } else if (s.left <= 0) {
-    headline = `Over by ${inr(Math.abs(s.left))}`;
-    tone = 'bad';
-  } else {
-    headline = null;
-    tone = ahead ? 'warn' : 'good';
-  }
+  if (!inflow) tone = 'neutral';
+  else if (s.left < 0) tone = 'bad';
+  else if (ahead || (s.isCurrent && afterBills < 0)) tone = 'warn';
 
   if (loading) {
     return <section className="card glance glance-loading" aria-busy="true"><div className="skeleton-line" /><div className="skeleton-line short" /></section>;
@@ -55,21 +46,15 @@ export default function MonthGlance({ year, month, inflow, expense, investment, 
       <div className="glance-top">
         <div className="glance-main">
           <span className="glance-eyebrow">
-            {s.isCurrent ? 'Safe to spend today' : s.isPast ? `${MONTH_LABELS[month - 1]} ${year} result` : 'Planned month'}
+            {!inflow ? `${MONTH_LABELS[month - 1]} ${year}` : s.left >= 0 ? `Left in ${MONTH_LABELS[month - 1]}` : `Over budget in ${MONTH_LABELS[month - 1]}`}
           </span>
-          {headline ? (
-            <span className="glance-big">{headline}</span>
+          <span className="glance-big">{inflow ? inr(Math.abs(s.left)) : '—'}</span>
+          {inflow > 0 ? (
+            <span className="glance-equation">
+              {compact(inflow)} in − {compact(expense)} spent − {compact(investment)} invested
+            </span>
           ) : (
-            <span className="glance-big">
-              {inr(Math.round(s.perDay))}
-              <small> / day</small>
-            </span>
-          )}
-          {inflow > 0 && !s.isPast && s.left > 0 && (
-            <span className="glance-sub">
-              {inr(s.left)} left · {s.daysLeft} day{s.daysLeft === 1 ? '' : 's'} to go
-              {pendingRecurring > 0 && <> · after {compact(pendingRecurring)} bills due</>}
-            </span>
+            <span className="glance-sub">Add this month’s inflow to see what’s left</span>
           )}
         </div>
         {savingsRate != null && (
@@ -91,6 +76,29 @@ export default function MonthGlance({ year, month, inflow, expense, investment, 
         )}
       </div>
 
+      {inflow > 0 && s.isCurrent && s.left > 0 && (
+        <div className="glance-steps">
+          {pendingRecurring > 0 && (
+            <div className="glance-step">
+              <span>Bills still to add</span>
+              <b>− {inr(pendingRecurring)}</b>
+            </div>
+          )}
+          {pendingRecurring > 0 && (
+            <div className="glance-step">
+              <span>After bills</span>
+              <b className={afterBills < 0 ? 'neg' : ''}>{afterBills < 0 ? '− ' : ''}{inr(Math.abs(afterBills))}</b>
+            </div>
+          )}
+          <div className="glance-step glance-step-strong">
+            <span>
+              Daily budget · {s.daysLeft} day{s.daysLeft === 1 ? '' : 's'} left
+            </span>
+            <b>{afterBills > 0 ? `${inr(Math.floor(afterBills / s.daysLeft))} / day` : '₹0 / day'}</b>
+          </div>
+        </div>
+      )}
+
       {s.isCurrent && avgExp > 0 && (
         <div className="glance-pace">
           <div className="glance-pace-bar">
@@ -98,9 +106,8 @@ export default function MonthGlance({ year, month, inflow, expense, investment, 
             <span className="glance-pace-today" style={{ left: `${timePct}%` }} />
           </div>
           <span className="glance-pace-text">
-            {ahead
-              ? `Spending ahead of pace: ${spendPct}% of your usual month spent, ${timePct}% of the month gone`
-              : `On track: ${spendPct}% of your usual month spent, ${timePct}% of the month gone`}
+            {ahead ? 'Spending faster than usual: ' : 'On track: '}
+            {spendPct}% of a typical month’s spend used, {timePct}% of the month gone
           </span>
         </div>
       )}

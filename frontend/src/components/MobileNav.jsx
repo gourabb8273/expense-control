@@ -11,6 +11,8 @@ function Icon({ name }) {
       return (<svg {...common}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg>);
     case 'portfolio':
       return (<svg {...common}><path d="M12 3a9 9 0 1 0 9 9h-9z" /><path d="M15 3.5A9 9 0 0 1 20.5 9H15z" /></svg>);
+    case 'balance':
+      return (<svg {...common}><path d="M12 3v18M5 21h14M4 7h16M7 7l-3 7a3 3 0 0 0 6 0zM17 7l-3 7a3 3 0 0 0 6 0z" /></svg>);
     case 'review':
       return (<svg {...common}><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7z" /></svg>);
     case 'plus':
@@ -25,6 +27,7 @@ export function BottomNav({ viewMode, onChange, onAdd }) {
   const tabs = [
     { id: 'monthly', label: 'Month', icon: 'month' },
     { id: 'yearly', label: 'Year', icon: 'year' },
+    { id: 'balance', label: 'Balance', icon: 'balance' },
     { id: 'add' },
     { id: 'portfolio', label: 'Portfolio', icon: 'portfolio' },
     { id: 'review', label: 'Review', icon: 'review' },
