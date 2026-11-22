@@ -879,6 +879,7 @@ function DashboardPage() {
             )}
           </div>
 
+          {viewMode !== 'notes' && (
           <MonthStepper
             year={year}
             month={month}
@@ -886,6 +887,7 @@ function DashboardPage() {
             mode={viewMode === 'yearly' || viewMode === 'review' ? 'year' : 'month'}
             swipeTargetRef={contentRef}
           />
+          )}
 
           {viewMode === 'monthly' && (
               <div className="filter-group">
@@ -1476,7 +1478,7 @@ function DashboardPage() {
           </>
         )}
 
-        {viewMode === 'notes' && <RoughPlan year={year} month={month} transactions={transactions} />}
+        {viewMode === 'notes' && <RoughPlan year={year} month={month} />}
 
         {viewMode === 'balance' && (
           <BalanceView

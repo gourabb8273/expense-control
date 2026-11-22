@@ -2310,3 +2310,155 @@ body.sheet-open {
 .sheet * {
   box-sizing: border-box;
 }
+
+/* ---------- Plan: month chips, summary, typed lines ---------- */
+.rp-months {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 0.1rem;
+}
+.rp-months::-webkit-scrollbar {
+  display: none;
+}
+.rp-month {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 4.4rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 0.8rem;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text);
+  line-height: 1.15;
+}
+.rp-month small {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+.rp-month.is-active {
+  background: linear-gradient(135deg, #4ade80, #16a34a);
+  border-color: transparent;
+  color: #052e16;
+}
+.rp-month.is-active small {
+  color: #064e3b;
+}
+.rp-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.rp-sum-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+.rp-sum-grid > div {
+  display: flex;
+  flex-direction: column;
+  padding: 0.55rem 0.6rem;
+  border-radius: 0.7rem;
+  background: var(--kpi-bg);
+  border: 1px solid var(--kpi-border);
+}
+.rp-sum-grid span {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.rp-sum-grid b {
+  font-size: 1.1rem;
+}
+.rp-sum-grid b.exp {
+  color: #fb923c;
+}
+.rp-sum-grid b.inv {
+  color: #4ade80;
+}
+[data-theme='light'] .rp-sum-grid b.exp {
+  color: #ea580c;
+}
+[data-theme='light'] .rp-sum-grid b.inv {
+  color: #16a34a;
+}
+.rp-sum-left {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.rp-sum-left b {
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+.rp-sum-left b.good {
+  color: #4ade80;
+}
+.rp-sum-left b.bad {
+  color: var(--bad);
+}
+.rp-sum-note,
+.rp-sum-actual {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+.rp-add {
+  flex-direction: column;
+  align-items: stretch;
+}
+.rp-add .vx-seg {
+  align-self: flex-start;
+}
+.rp-add-row {
+  display: flex;
+  gap: 0.4rem;
+}
+.rp-rules {
+  align-self: flex-start;
+}
+.rp-line {
+  grid-template-columns: 30px 1fr auto 26px;
+}
+.rp-right {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.rp-kind {
+  border: none;
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  background: var(--vx-heat-empty);
+  color: var(--text-muted);
+}
+.rp-kind.k-expense {
+  color: #fb923c;
+  background: rgba(249, 115, 22, 0.12);
+}
+.rp-kind.k-investment {
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.12);
+}
+.rp-section-head .rp-heading {
+  cursor: default;
+}
+.rp-expense .rp-heading {
+  color: #fb923c;
+}
+.rp-investment .rp-heading {
+  color: #4ade80;
+}
+.rp-subtotal small {
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
