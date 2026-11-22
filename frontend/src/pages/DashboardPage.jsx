@@ -43,6 +43,7 @@ import BalanceView from '../components/BalanceView';
 import RoughPlan from '../components/RoughPlan';
 import { Loading } from '../components/charts/ChartKit';
 import ReviewDetails from '../components/ReviewDetails';
+import ReviewExport from '../components/ReviewExport';
 import { colorFor, dayLabel, downloadCsv, groupByDay, splitPendingRecurring, transactionsToCsvRows } from '../utils/analytics';
 
 function balanceSheetTotalsFromSheet(data) {
@@ -132,6 +133,7 @@ function DashboardPage() {
   const addEntryRef = useRef(null);
   const entriesRef = useRef(null);
   const recurringRef = useRef(null);
+  const reviewRef = useRef(null);
   const [chartsExpandAll, setChartsExpandAll] = useState(false);
   const [expandAllGeneration, setExpandAllGeneration] = useState(0);
   const [lineChartFullWidth, setLineChartFullWidth] = useState(false);
@@ -1473,8 +1475,11 @@ function DashboardPage() {
 
         {viewMode === 'review' && (
           <>
-            <YearInReview key={year} year={year} />
-            <ReviewDetails key={`d-${year}`} year={year} />
+            <ReviewExport targetRef={reviewRef} year={year} />
+            <div ref={reviewRef} className="review-export-root">
+              <YearInReview key={year} year={year} />
+              <ReviewDetails key={`d-${year}`} year={year} />
+            </div>
           </>
         )}
 
