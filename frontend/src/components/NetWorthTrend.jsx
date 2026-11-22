@@ -1,78 +1,74 @@
 import { useFormatMoney } from '../utils/formatMoney';
 import { MONTH_LABELS } from '../utils/analytics';
 import { Legend } from './charts/ChartKit';
-import { niceFloor } from './charts/chartUtils';
-import LineAreaChart from './charts/LineAreaChart';
+import BalanceBars from './charts/BalanceBars';
 
 /**
- * Net worth & assets as lines, debts as their own bar chart underneath (so small debts stay readable).
+ * Assets (bars up), debts (bars down) and net worth (line) on ONE scale, so they read together.
  * rows: 12 × { totalAssets, totalDebts, netWorth }
  */
-export default function NetWorthTrend({ rows, stop = 12 }) {
+export default function NetWorthTrend({ rows, stop = 12, highlight }) {
   const { inr, compact, hideAmounts } = useFormatMoney();
   const fmt = (v) => inr(Math.round(v));
-  // Months with no balance sheet at all are gaps (null), not zeros, so lines don't plunge
-  const empty = (r) => !r || (!r.totalAssets && !r.totalDebts);
-  const assets = rows.map((r) => (empty(r) ? null : r.totalAssets || 0));
-  const debts = rows.map((r) => (empty(r) ? null : r.totalDebts || 0));
-  const net = rows.map((r) => (empty(r) ? null : r.netWorth || 0));
-  const rawDebts = debts.slice(0, stop);
-  const debtsSoFar = rawDebts.map((v) => v ?? 0);
-  const known = rawDebts.map((v, i) => ({ v, i })).filter((r) => r.v != null);
-  const debtStart = known.length ? known[0].v : 0;
-  const debtEnd = known.length ? known[known.length - 1].v : 0;
-  // Month-on-month change in debt (negative = paid down); skips months with no balance sheet
+  // Months with no balance sheet at all (or in the future) are left empty
+  const shaped = rows.map((r, i) =>
+    i >= stop || !r || (!r.totalAssets && !r.totalDebts)
+      ? null
+      : { label: MONTH_LABELS[i], assets: r.totalAssets || 0, debts: r.totalDebts || 0, net: r.netWorth || 0 }
+  );
+  const known = shaped.map((r, i) => (r ? { ...r, i } : null)).filter(Boolean);
+  const first = known[0];
+  const last = known[known.length - 1];
+  const hasDebt = known.some((r) => r.debts > 0);
+  // Month-on-month change in debt (negative = paid down)
   const paidRows = known
-    .map((r, k) => ({ i: r.i, delta: k > 0 ? r.v - known[k - 1].v : 0 }))
+    .map((r, k) => ({ i: r.i, delta: k > 0 ? r.debts - known[k - 1].debts : 0 }))
     .filter((r, k) => k > 0 && Math.round(r.delta) !== 0);
+
+  if (!known.length) return null;
 
   return (
     <>
-      <LineAreaChart
-        labels={MONTH_LABELS}
-        series={[
-          { key: 'a', label: 'Assets', color: '#06b6d4', values: assets, stopAt: stop, width: 1.75 },
-          { key: 'n', label: 'Net worth', color: '#22c55e', values: net, stopAt: stop, area: true, endDot: true, width: 2.75 },
-          ...(debtsSoFar.some(Boolean)
-            ? [{ key: 'd', label: 'Debts', color: '#f43f5e', values: debts, stopAt: stop, endDot: true, width: 2, axis: 'right' }]
-            : []),
-        ]}
-        format={fmt}
-        compact={compact}
-        hideAmounts={hideAmounts}
-        yMin={niceFloor(Math.min(...net.slice(0, stop).filter((v) => v != null)) * 0.9)}
-      />
+      <BalanceBars rows={shaped} labels={MONTH_LABELS} format={fmt} compact={compact} hideAmounts={hideAmounts} highlight={highlight} />
       <Legend
         items={[
-          { label: 'Net worth', color: '#22c55e' },
-          { label: 'Assets', color: '#06b6d4', line: true },
-          ...(debtsSoFar.some(Boolean) ? [{ label: 'Debts (right scale)', color: '#f43f5e', line: true }] : []),
+          { label: 'Net worth', color: '#22c55e', line: true },
+          { label: 'Assets (up)', color: '#06b6d4' },
+          ...(hasDebt ? [{ label: 'Debts (down)', color: '#f43f5e' }] : []),
         ]}
       />
-      {debtsSoFar.some(Boolean) && (
-        <div className="nw-debts">
-          <span className="nw-debts-title">
-            Debts
-            {!hideAmounts && (
-              <small>
-                {' '}
-                · {compact(debtStart)} → {compact(debtEnd)}
-                {debtStart > 0 && debtEnd !== debtStart && (
-                  <> ({debtEnd < debtStart ? '▼' : '▲'} {compact(Math.abs(debtEnd - debtStart))}, {Math.round((Math.abs(debtEnd - debtStart) / debtStart) * 100)}%)</>
-                )}
-              </small>
-            )}
+      {!hideAmounts && first && last && known.length > 1 && (
+        <div className="nw-summary">
+          <span>
+            <i style={{ background: '#22c55e' }} />
+            Net worth <b>{compact(first.net)} → {compact(last.net)}</b>
           </span>
-          {!hideAmounts && paidRows.length > 0 && (
-            <div className="nw-debt-steps">
-              {paidRows.map((r) => (
-                <span key={r.i} className={`nw-debt-step ${r.delta <= 0 ? 'good' : 'bad'}`}>
-                  {MONTH_LABELS[r.i]} {r.delta <= 0 ? '−' : '+'}
-                  {compact(Math.abs(r.delta))}
-                </span>
-              ))}
-            </div>
+          <span>
+            <i style={{ background: '#06b6d4' }} />
+            Assets <b>{compact(first.assets)} → {compact(last.assets)}</b>
+          </span>
+          {hasDebt && (
+            <span>
+              <i style={{ background: '#f43f5e' }} />
+              Debts <b>{compact(first.debts)} → {compact(last.debts)}</b>
+              {first.debts > 0 && last.debts !== first.debts && (
+                <em className={last.debts < first.debts ? 'good' : 'bad'}>
+                  {last.debts < first.debts ? '▼' : '▲'} {Math.round((Math.abs(last.debts - first.debts) / first.debts) * 100)}%
+                </em>
+              )}
+            </span>
           )}
+        </div>
+      )}
+      {!hideAmounts && hasDebt && paidRows.length > 0 && (
+        <div className="nw-debt-steps" aria-label="Debt change each month">
+          <span className="nw-debt-steps-label">Debt each month:</span>
+          {paidRows.map((r) => (
+            <span key={r.i} className={`nw-debt-step ${r.delta <= 0 ? 'good' : 'bad'}`}>
+              {MONTH_LABELS[r.i]} {r.delta <= 0 ? '−' : '+'}
+              {compact(Math.abs(r.delta))}
+            </span>
+          ))}
         </div>
       )}
     </>

@@ -36,7 +36,6 @@ import { useFormatMoney } from '../utils/formatMoney';
 import MonthGlance from '../components/MonthGlance';
 import MonthAnalytics from '../components/MonthAnalytics';
 import YearAnalytics from '../components/YearAnalytics';
-import UpcomingBills from '../components/UpcomingBills';
 import CollapsibleSection from '../components/CollapsibleSection';
 import { BottomNav, MonthStepper } from '../components/MobileNav';
 import MobileHeaderActions from '../components/MobileHeaderActions';
@@ -126,7 +125,6 @@ function DashboardPage() {
   });
   const [prevMonthBalance, setPrevMonthBalance] = useState(null);
   const [pendingRecurringCount, setPendingRecurringCount] = useState(0);
-  const [pendingRecurringOutflow, setPendingRecurringOutflow] = useState(0);
   const contentRef = useRef(null);
   const addEntryRef = useRef(null);
   const entriesRef = useRef(null);
@@ -237,18 +235,10 @@ function DashboardPage() {
     api
       .get('/recurring/pending', { params: { year, month } })
       .then((res) => {
-        if (!cancelled) {
-          setPendingRecurringCount(res.data.pending?.length || 0);
-          setPendingRecurringOutflow(
-            (res.data.pending || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-          );
-        }
+        if (!cancelled) setPendingRecurringCount(res.data.pending?.length || 0);
       })
       .catch(() => {
-        if (!cancelled) {
-          setPendingRecurringCount(0);
-          setPendingRecurringOutflow(0);
-        }
+        if (!cancelled) setPendingRecurringCount(0);
       });
     return () => {
       cancelled = true;
@@ -996,15 +986,7 @@ function DashboardPage() {
             expense={expenseAmount}
             investment={investmentAmount}
             history={monthHistory}
-            pendingRecurring={pendingRecurringOutflow}
             loading={loading}
-          />
-          <UpcomingBills
-            year={year}
-            month={month}
-            transactions={transactions}
-            refreshKey={recurringRefreshKey}
-            onGoToRecurring={() => scrollToRef(recurringRef)}
           />
           <section className="monthly-overview">
               <div className="monthly-cashflow">

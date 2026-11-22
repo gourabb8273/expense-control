@@ -5,11 +5,10 @@ import { Sparkline } from './charts/BarCharts';
 
 /**
  * Read-only "month at a glance" hero: safe-to-spend per day, pace bar and three KPI tiles with 6-month sparklines.
- * pendingRecurring: sum of recurring outflows not yet added this month (from GET /recurring/pending).
  */
-export default function MonthGlance({ year, month, inflow, expense, investment, history, pendingRecurring = 0, loading }) {
+export default function MonthGlance({ year, month, inflow, expense, investment, history, loading }) {
   const { inr, compact, hideAmounts } = useFormatMoney();
-  // left = inflow − expense − investment (same as the app's “Remaining”); bills are subtracted separately below
+  // left = inflow − expense − investment (same as the app's “Remaining”)
   const s = safeToSpend({ inflow, expense, investment, year, month });
 
   const trend = useMemo(() => {
@@ -31,11 +30,10 @@ export default function MonthGlance({ year, month, inflow, expense, investment, 
   const spendPct = avgExp > 0 ? Math.round((expense / avgExp) * 100) : null;
   const ahead = spendPct != null && s.isCurrent && spendPct > timePct + 8;
 
-  const afterBills = s.left - pendingRecurring;
   let tone = 'good';
   if (!inflow) tone = 'neutral';
   else if (s.left < 0) tone = 'bad';
-  else if (ahead || (s.isCurrent && afterBills < 0)) tone = 'warn';
+  else if (ahead) tone = 'warn';
 
   if (loading) {
     return <section className="card glance glance-loading" aria-busy="true"><div className="skeleton-line" /><div className="skeleton-line short" /></section>;
@@ -76,25 +74,13 @@ export default function MonthGlance({ year, month, inflow, expense, investment, 
         )}
       </div>
 
-      {inflow > 0 && s.isCurrent && s.left > 0 && (
+      {inflow > 0 && s.isCurrent && s.left > 0 && s.daysLeft > 0 && (
         <div className="glance-steps">
-          {pendingRecurring > 0 && (
-            <div className="glance-step">
-              <span>Bills still to add</span>
-              <b>− {inr(pendingRecurring)}</b>
-            </div>
-          )}
-          {pendingRecurring > 0 && (
-            <div className="glance-step">
-              <span>After bills</span>
-              <b className={afterBills < 0 ? 'neg' : ''}>{afterBills < 0 ? '− ' : ''}{inr(Math.abs(afterBills))}</b>
-            </div>
-          )}
           <div className="glance-step glance-step-strong">
             <span>
-              Daily budget · {s.daysLeft} day{s.daysLeft === 1 ? '' : 's'} left
+              You can spend · {s.daysLeft} day{s.daysLeft === 1 ? '' : 's'} left
             </span>
-            <b>{afterBills > 0 ? `${inr(Math.floor(afterBills / s.daysLeft))} / day` : '₹0 / day'}</b>
+            <b>{inr(Math.floor(s.left / s.daysLeft))} / day</b>
           </div>
         </div>
       )}

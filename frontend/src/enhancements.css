@@ -1767,3 +1767,60 @@ body.sheet-open {
 [data-theme='light'] .nw-debt-step.bad {
   color: #be123c;
 }
+.nw-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.7rem;
+  background: var(--kpi-bg);
+  border: 1px solid var(--kpi-border);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.nw-summary span {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.nw-summary i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+.nw-summary b {
+  color: var(--text);
+  margin-left: auto;
+}
+.nw-summary em {
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+.nw-summary em.good {
+  color: #4ade80;
+}
+.nw-summary em.bad {
+  color: #fb7185;
+}
+.nw-debt-steps-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  align-self: center;
+  margin-right: 0.1rem;
+}
+
+/* Phones: the month summary scrolls away instead of covering ~a quarter of the screen */
+@media (max-width: 768px) {
+  .sticky-month-summary {
+    position: relative;
+    top: auto;
+  }
+}
+@media (max-width: 768px) {
+  /* Same six numbers are already in the summary + "Left in" card above; hide the duplicate grid on phones */
+  .monthly-cashflow-summary {
+    display: none !important;
+  }
+}
