@@ -4,7 +4,7 @@ import { useElementWidth, useTooltip, niceMax } from './chartUtils';
  * Sorted horizontal bars with direct labels and a ghost marker for last month.
  * rows: [{ name, value, prev?, color }]
  */
-export function CompareBars({ rows, format, total, hideAmounts, onSelect, selected, upIsGood = false }) {
+export function CompareBars({ rows, format, total, hideAmounts, onSelect, selected, upIsGood = false, deltaLabel = 'vs last month', newLabel = 'New this month' }) {
   const max = niceMax(Math.max(1, ...rows.map((r) => Math.max(r.value, r.prev || 0))));
   return (
     <ul className="vx-hbars">
@@ -39,10 +39,10 @@ export function CompareBars({ rows, format, total, hideAmounts, onSelect, select
               {delta != null && r.prev > 0 && Math.abs(delta) >= 1 && (
                 <span className={`vx-hbar-delta ${(delta > 0) !== upIsGood ? 'up' : 'down'}`}>
                   {delta > 0 ? '▲' : '▼'} {hideAmounts ? '' : format(Math.abs(delta))}
-                  {deltaPct != null && Math.abs(deltaPct) < 1000 ? ` (${delta > 0 ? '+' : ''}${deltaPct}%)` : ''} vs last month
+                  {deltaPct != null && Math.abs(deltaPct) < 1000 ? ` (${delta > 0 ? '+' : ''}${deltaPct}%)` : ''} {deltaLabel}
                 </span>
               )}
-              {r.prev === 0 && r.value > 0 && <span className="vx-hbar-delta new">New this month</span>}
+              {r.prev === 0 && r.value > 0 && <span className="vx-hbar-delta new">{newLabel}</span>}
             </button>
           </li>
         );

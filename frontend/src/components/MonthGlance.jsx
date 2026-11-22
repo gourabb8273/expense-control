@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useFormatMoney } from '../utils/formatMoney';
 import { safeToSpend, sumBy, MONTH_LABELS } from '../utils/analytics';
 import { Sparkline } from './charts/BarCharts';
+import { Loading } from './charts/ChartKit';
 
 /**
  * Read-only "month at a glance" hero: safe-to-spend per day, pace bar and three KPI tiles with 6-month sparklines.
@@ -21,22 +22,20 @@ export default function MonthGlance({ year, month, inflow, expense, investment, 
 
   const prevExp = trend.exp.length > 1 ? trend.exp[trend.exp.length - 2] : null;
   const expDelta = prevExp ? Math.round(((expense - prevExp) / prevExp) * 100) : null;
-  const avgExp = trend.exp.length > 1 ? trend.exp.slice(0, -1).reduce((a, b) => a + b, 0) / (trend.exp.length - 1) : 0;
-  const savingsRate = inflow > 0 ? Math.round(((inflow - expense) / inflow) * 100) : null;
-  const investRate = inflow > 0 ? Math.round((investment / inflow) * 100) : null;
-
-  // Pace: share of month gone vs share of usual spend already spent
-  const timePct = s.daysInMonth ? Math.round((s.dayOfMonth / s.daysInMonth) * 100) : 0;
-  const spendPct = avgExp > 0 ? Math.round((expense / avgExp) * 100) : null;
-  const ahead = spendPct != null && s.isCurrent && spendPct > timePct + 8;
+  // exact to one decimal, e.g. 47.1%
+  const savingsRate = inflow > 0 ? Math.round(((inflow - expense) / inflow) * 1000) / 10 : null;
+  const investRate = inflow > 0 ? Math.round((investment / inflow) * 1000) / 10 : null;
 
   let tone = 'good';
   if (!inflow) tone = 'neutral';
   else if (s.left < 0) tone = 'bad';
-  else if (ahead) tone = 'warn';
 
   if (loading) {
-    return <section className="card glance glance-loading" aria-busy="true"><div className="skeleton-line" /><div className="skeleton-line short" /></section>;
+    return (
+      <section className="card glance glance-loading" aria-busy="true">
+        <Loading text={`Loading ${MONTH_LABELS[month - 1]} ${year}…`} />
+      </section>
+    );
   }
 
   return (
@@ -82,19 +81,6 @@ export default function MonthGlance({ year, month, inflow, expense, investment, 
             </span>
             <b>{inr(Math.floor(s.left / s.daysLeft))} / day</b>
           </div>
-        </div>
-      )}
-
-      {s.isCurrent && avgExp > 0 && (
-        <div className="glance-pace">
-          <div className="glance-pace-bar">
-            <span className="glance-pace-fill" style={{ width: `${Math.min(100, spendPct)}%` }} />
-            <span className="glance-pace-today" style={{ left: `${timePct}%` }} />
-          </div>
-          <span className="glance-pace-text">
-            {ahead ? 'Spending faster than usual: ' : 'On track: '}
-            {spendPct}% of a typical month’s spend used, {timePct}% of the month gone
-          </span>
         </div>
       )}
 

@@ -12,14 +12,14 @@ import {
   totalsByKey,
   TYPE_COLORS,
 } from '../utils/analytics';
-import { VxCard, Legend, Segmented, EmptyChart } from './charts/ChartKit';
+import { VxCard, Legend, Segmented, EmptyChart, Loading } from './charts/ChartKit';
+import CollapsibleSection from './CollapsibleSection';
 import LineAreaChart from './charts/LineAreaChart';
 import { CompareBars } from './charts/BarCharts';
-import { Treemap } from './charts/FlowCharts';
 import { FlowBars, ChangeList } from './charts/FlowBars';
 
 /** Read-only visual analytics for one month. Uses only data already loaded by the dashboard. */
-export default function MonthAnalytics({ year, month, transactions, history, historyLoading, inflows, inflowTotal, onPickCategory, pickedCategory }) {
+export default function MonthAnalytics({ year, month, transactions, history, historyLoading, loading, inflows, inflowTotal, onPickCategory, pickedCategory }) {
   const { inr, compact, hideAmounts } = useFormatMoney();
   const fmt = (v) => inr(Math.round(v));
   const [groupBy, setGroupBy] = useState('category');
@@ -88,20 +88,6 @@ export default function MonthAnalytics({ year, month, transactions, history, his
     return { inflow: inflowSum, parts, ok: exp + inv > 0 || inflowSum > 0 };
   }, [transactions, inflows, inflowTotal]);
 
-  // ---- Treemap (tag → category)
-  const treeItems = useMemo(() => {
-    const map = new Map();
-    (transactions || []).forEach((tx) => {
-      if (tx.type !== 'expense') return;
-      const k = `${tx.tag || 'Untagged'}|${tx.category}`;
-      map.set(k, (map.get(k) || 0) + (Number(tx.amount) || 0));
-    });
-    return Array.from(map, ([k, value]) => {
-      const [group, name] = k.split('|');
-      return { name, group, value, color: colorFor(group) };
-    });
-  }, [transactions]);
-
   // ---- Subscriptions
   const subs = useMemo(
     () => (historyLoading ? [] : detectSubscriptions(transactions, hist.slice(0, 5))),
@@ -113,13 +99,18 @@ export default function MonthAnalytics({ year, month, transactions, history, his
   const prevLabel = prevMonth ? MONTH_LABELS[prevMonth.month - 1] : '';
 
   return (
-    <section className="vx-section" aria-label="Visual analytics">
-      <div className="vx-section-head">
-        <h2>Visual analytics</h2>
-        <span className="muted small">Tap any chart for details</span>
-      </div>
+    <CollapsibleSection
+      id="visual-analytics"
+      title="Visual analytics"
+      summary="Spending pace, where it went, vs last month, money flow, repeating charges"
+      className="vx-section-card"
+    >
+      {loading ? (
+        <Loading text="Loading this month…" />
+      ) : (
       <div className="vx-grid">
         <VxCard
+          collapseId="m-pace"
           title="Spending pace"
           subtitle={
             pace.hasAvg && spentSoFar > 0
@@ -156,6 +147,7 @@ export default function MonthAnalytics({ year, month, transactions, history, his
         </VxCard>
 
         <VxCard
+          collapseId="m-where"
           title="Where it went"
           subtitle={
             compareTo
@@ -200,6 +192,7 @@ export default function MonthAnalytics({ year, month, transactions, history, his
 
         {changes && changes.rows.length > 0 && (
           <VxCard
+            collapseId="m-compare"
             title={`Compared with ${prevLabel}`}
             subtitle={
               hideAmounts
@@ -212,6 +205,7 @@ export default function MonthAnalytics({ year, month, transactions, history, his
         )}
 
         <VxCard
+          collapseId="m-flow"
           title="Money flow"
           subtitle={flow.inflow > 0 ? `Where this month’s ${compact(flow.inflow)} inflow went · tap a part for details` : 'Spent vs invested this month'}
         >
@@ -222,15 +216,8 @@ export default function MonthAnalytics({ year, month, transactions, history, his
           )}
         </VxCard>
 
-        <VxCard title="Spend map" subtitle="Box size = share of spend · colour = tag">
-          {treeItems.length ? (
-            <Treemap items={treeItems} format={fmt} hideAmounts={hideAmounts} total={sumBy(transactions, 'expense')} />
-          ) : (
-            <EmptyChart text="No expenses yet this month." />
-          )}
-        </VxCard>
-
         <VxCard
+          collapseId="m-subs"
           title="Repeating charges"
           subtitle={subs.length ? `Same amount ${'≥'}3 of the last 6 months · ${hideAmounts ? '' : `${fmt(subsYearly)}/yr`}` : 'Detected from your entries'}
         >
@@ -260,6 +247,7 @@ export default function MonthAnalytics({ year, month, transactions, history, his
           )}
         </VxCard>
       </div>
-    </section>
+      )}
+    </CollapsibleSection>
   );
 }

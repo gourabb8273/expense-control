@@ -1,15 +1,59 @@
-/** Card wrapper for the new charts: title, one-line takeaway, optional right-side control. */
-export function VxCard({ title, subtitle, right, children, className = '', wide = false, id }) {
+import { useState } from 'react';
+
+function readOpen(key, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    return v == null ? fallback : v === '1';
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Card wrapper for the new charts: title, one-line takeaway, optional right-side control.
+ * With `collapseId` the card folds to its title + takeaway and remembers open/closed on this device.
+ */
+export function VxCard({ title, subtitle, right, children, className = '', wide = false, id, collapseId, defaultOpen = false }) {
+  const key = collapseId ? `vx-open:${collapseId}` : null;
+  const [open, setOpen] = useState(() => (key ? readOpen(key, defaultOpen) : true));
+  const toggle = () =>
+    setOpen((v) => {
+      try {
+        if (key) localStorage.setItem(key, v ? '0' : '1');
+      } catch {
+        /* ignore */
+      }
+      return !v;
+    });
   return (
-    <div className={`card vx-card${wide ? ' vx-wide' : ''} ${className}`} id={id}>
+    <div className={`card vx-card${wide ? ' vx-wide' : ''}${key && !open ? ' is-collapsed' : ''} ${className}`} id={id}>
       <div className="vx-card-head">
-        <div className="vx-card-titles">
-          <h3>{title}</h3>
-          {subtitle && <p className="vx-subtitle">{subtitle}</p>}
-        </div>
-        {right && <div className="vx-card-right">{right}</div>}
+        {key ? (
+          <button type="button" className="vx-card-titles vx-card-toggle" onClick={toggle} aria-expanded={open}>
+            <h3>
+              <span className="section-header-chevron" aria-hidden="true">{open ? '▾' : '▸'}</span> {title}
+            </h3>
+            {subtitle && <p className="vx-subtitle">{subtitle}</p>}
+          </button>
+        ) : (
+          <div className="vx-card-titles">
+            <h3>{title}</h3>
+            {subtitle && <p className="vx-subtitle">{subtitle}</p>}
+          </div>
+        )}
+        {right && open && <div className="vx-card-right">{right}</div>}
       </div>
-      {children}
+      {open && children}
+    </div>
+  );
+}
+
+/** Small spinner used instead of showing ₹0 while data is still loading. */
+export function Loading({ text = 'Loading…', inline = false }) {
+  return (
+    <div className={`vx-loading${inline ? ' inline' : ''}`} role="status" aria-live="polite">
+      <span className="vx-spinner" aria-hidden="true" />
+      <span>{text}</span>
     </div>
   );
 }

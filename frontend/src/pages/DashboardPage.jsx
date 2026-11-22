@@ -40,7 +40,10 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import { BottomNav, MonthStepper } from '../components/MobileNav';
 import MobileHeaderActions from '../components/MobileHeaderActions';
 import BalanceView from '../components/BalanceView';
-import { colorFor, dayLabel, downloadCsv, groupByDay, transactionsToCsvRows } from '../utils/analytics';
+import RoughPlan from '../components/RoughPlan';
+import { Loading } from '../components/charts/ChartKit';
+import ReviewDetails from '../components/ReviewDetails';
+import { colorFor, dayLabel, downloadCsv, groupByDay, splitPendingRecurring, transactionsToCsvRows } from '../utils/analytics';
 
 function balanceSheetTotalsFromSheet(data) {
   const totalAssets = (data?.assets || []).reduce((s, i) => s + (Number(i.value) || 0), 0);
@@ -124,7 +127,7 @@ function DashboardPage() {
     netWorth: 0,
   });
   const [prevMonthBalance, setPrevMonthBalance] = useState(null);
-  const [pendingRecurringCount, setPendingRecurringCount] = useState(0);
+  const [pendingRecurringList, setPendingRecurringList] = useState([]);
   const contentRef = useRef(null);
   const addEntryRef = useRef(null);
   const entriesRef = useRef(null);
@@ -166,8 +169,15 @@ function DashboardPage() {
     setCashflowRefreshKey((k) => k + 1);
   };
 
+  // Until the month's inflow has loaded, new cards show a spinner instead of ₹0
+  const [inflowLoaded, setInflowLoaded] = useState(false);
+  useEffect(() => {
+    setInflowLoaded(false);
+  }, [month, year]);
+
   const handleInflowTotalChange = (total) => {
     setMonthInflowTotal(total);
+    setInflowLoaded(true);
   };
 
   const getCashflowNum = (y, m) => {
@@ -235,10 +245,10 @@ function DashboardPage() {
     api
       .get('/recurring/pending', { params: { year, month } })
       .then((res) => {
-        if (!cancelled) setPendingRecurringCount(res.data.pending?.length || 0);
+        if (!cancelled) setPendingRecurringList(res.data.pending || []);
       })
       .catch(() => {
-        if (!cancelled) setPendingRecurringCount(0);
+        if (!cancelled) setPendingRecurringList([]);
       });
     return () => {
       cancelled = true;
@@ -680,6 +690,12 @@ function DashboardPage() {
     [transactions, monthHistory, historyLoading]
   );
 
+  // Recurring rules already added by hand this month (even with a different amount) are not "pending"
+  const pendingRecurringCount = useMemo(
+    () => splitPendingRecurring(pendingRecurringList, transactions).pending.length,
+    [pendingRecurringList, transactions]
+  );
+
   const monthAlerts = useMemo(
     () =>
       buildMonthAlerts({
@@ -813,6 +829,13 @@ function DashboardPage() {
               onClick={() => setViewMode('balance')}
             >
               Balance sheet
+            </button>
+            <button
+              type="button"
+              className={viewMode === 'notes' ? 'primary-btn' : 'ghost-btn'}
+              onClick={() => setViewMode('notes')}
+            >
+              Rough plan
             </button>
             <button
               type="button"
@@ -986,7 +1009,7 @@ function DashboardPage() {
             expense={expenseAmount}
             investment={investmentAmount}
             history={monthHistory}
-            loading={loading}
+            loading={loading || !inflowLoaded}
           />
           <section className="monthly-overview">
               <div className="monthly-cashflow">
@@ -1056,11 +1079,21 @@ function DashboardPage() {
                   )}
                 </div>
               </div>
-              <AlertsBanner alerts={monthAlerts} />
+              {monthAlerts.length > 0 && (
+                <CollapsibleSection
+                  id="month-alerts"
+                  title={`Alerts · ${monthAlerts.length}`}
+                  summary={monthAlerts.length === 1 ? '1 note for this month' : `${monthAlerts.length} notes for this month`}
+                  className="alerts-collapsible"
+                >
+                  <AlertsBanner alerts={monthAlerts} />
+                </CollapsibleSection>
+              )}
               <div ref={recurringRef} className="recurring-anchor">
               <RecurringBanner
                 year={year}
                 month={month}
+                transactions={transactions}
                 refreshKey={recurringRefreshKey}
                 onApplied={() => {
                   loadData(month, year);
@@ -1080,18 +1113,6 @@ function DashboardPage() {
           </section>
 
           <section className="dashboard-sections">
-            <div className="balance-sheet-month-wrap">
-              <BalanceSheetSection
-                year={year}
-                month={month}
-                tagsRefreshKey={tagsRefreshKey}
-                onMetaChange={setBalanceSheetMeta}
-                onSaved={() => {
-                  setBalanceSheetRefreshKey((k) => k + 1);
-                  toast.success('Balance sheet saved');
-                }}
-              />
-            </div>
             <div className="content-block">
               <div ref={addEntryRef} id="add-entry" className="add-entry-anchor">
                 <TransactionForm onCreated={handleCreateTransaction} staticCategories={staticCategories} />
@@ -1376,12 +1397,43 @@ function DashboardPage() {
                 )}
               </div>
             </div>
+            <div className="balance-sheet-month-wrap">
+              <BalanceSheetSection
+                year={year}
+                month={month}
+                tagsRefreshKey={tagsRefreshKey}
+                onMetaChange={setBalanceSheetMeta}
+                onSaved={() => {
+                  setBalanceSheetRefreshKey((k) => k + 1);
+                  toast.success('Balance sheet saved');
+                }}
+              />
+            </div>
+            <CollapsibleSection
+              id="classic-month-charts"
+              title="Charts: by category, tag & averages"
+              summary="Pie & bar breakdowns (also used in the PDF)"
+              forceOpen={exportingPdf}
+              className="classic-charts-section"
+              defaultOpen
+            >
+              <ChartsExpandToggle />
+              <MonthlyCashInflowCharts inflows={monthInflows} year={year} month={month} />
+              <div className="charts-at-bottom">
+                <MonthlyCharts
+                  monthSummary={monthlySummary}
+                  comparison={monthlyComparison}
+                  transactions={transactions}
+                />
+              </div>
+            </CollapsibleSection>
             <MonthAnalytics
               year={year}
               month={month}
               transactions={transactions}
               history={monthHistory}
               historyLoading={historyLoading}
+              loading={loading || !inflowLoaded}
               inflows={monthInflows}
               inflowTotal={cashflowAmount}
               onPickCategory={pickCategory}
@@ -1404,23 +1456,6 @@ function DashboardPage() {
               expenseCategories={monthFlowCategories.expense}
               investmentCategories={monthFlowCategories.investment}
             />
-            <CollapsibleSection
-              id="classic-month-charts"
-              title="All detailed charts"
-              summary="Pie & bar breakdowns, used in the PDF export"
-              forceOpen={exportingPdf}
-              className="classic-charts-section"
-            >
-              <ChartsExpandToggle />
-              <MonthlyCashInflowCharts inflows={monthInflows} year={year} month={month} />
-              <div className="charts-at-bottom">
-                <MonthlyCharts
-                  monthSummary={monthlySummary}
-                  comparison={monthlyComparison}
-                  transactions={transactions}
-                />
-              </div>
-            </CollapsibleSection>
             <InsightsCard
                 year={year}
                 month={month}
@@ -1434,7 +1469,14 @@ function DashboardPage() {
           </div>
         )}
 
-        {viewMode === 'review' && <YearInReview key={year} year={year} />}
+        {viewMode === 'review' && (
+          <>
+            <YearInReview key={year} year={year} />
+            <ReviewDetails key={`d-${year}`} year={year} />
+          </>
+        )}
+
+        {viewMode === 'notes' && <RoughPlan year={year} month={month} transactions={transactions} />}
 
         {viewMode === 'balance' && (
           <BalanceView
@@ -1471,6 +1513,11 @@ function DashboardPage() {
         {viewMode === 'yearly' && (
           <section className="dashboard-sections">
             <div className="content-block">
+              {loading && (
+                <div className="card">
+                  <Loading text={`Loading ${year}…`} />
+                </div>
+              )}
               {yearlySummary && Array.isArray(yearlySummary.monthly) && (
                 <div className="card yearly-cashflow-card">
                   <h2>Year cashflow · {yearlySummary.year}</h2>

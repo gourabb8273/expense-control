@@ -269,3 +269,28 @@ export function transactionsToCsvRows(transactions) {
 }
 
 export { shiftMonth };
+
+/**
+ * Recurring rules count as "already added" if this month has a matching entry added by hand:
+ * same type and the same category (or the rule name / category appears in the entry's category or description).
+ * The amount can differ (e.g. EMI rule ₹20k but you paid ₹30k). Read-only helper.
+ */
+export function splitPendingRecurring(pending, transactions) {
+  const norm = (v) => String(v || '').trim().toLowerCase();
+  const txs = (transactions || []).filter((t) => !t.recurringRuleId);
+  const covered = [];
+  const still = [];
+  (pending || []).forEach((p) => {
+    const cat = norm(p.category);
+    const name = norm(p.name);
+    const match = txs.find((t) => {
+      if (t.type !== p.type) return false;
+      const tc = norm(t.category);
+      const td = norm(t.description);
+      return (cat && tc === cat) || (name && (tc === name || tc.includes(name) || td.includes(name))) || (cat && td.includes(cat));
+    });
+    if (match) covered.push({ ...p, matchedWith: match });
+    else still.push(p);
+  });
+  return { pending: still, covered };
+}

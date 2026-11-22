@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '../services/api';
 import { useFormatMoney } from '../utils/formatMoney';
 import { MONTH_LABELS, colorFor } from '../utils/analytics';
-import { VxCard, Segmented, EmptyChart } from './charts/ChartKit';
+import { VxCard, Segmented, EmptyChart, Loading } from './charts/ChartKit';
 import { CompareBars, MonthBars } from './charts/BarCharts';
 import NetWorthTrend from './NetWorthTrend';
 import BalanceSheetSection from './BalanceSheetSection';
@@ -105,6 +105,11 @@ export default function BalanceView({ year, month, refreshKey, tagsRefreshKey, o
 
   return (
     <div className="balance-view">
+      {!cur ? (
+        <section className="card bs-hero">
+          <Loading text={`Loading ${MONTH_LABELS[month - 1]} ${year}…`} />
+        </section>
+      ) : (
       <section className="card bs-hero" aria-label="Net worth summary">
         <span className="glance-eyebrow">Net worth · {MONTH_LABELS[month - 1]} {year}</span>
         <span className="glance-big">{now ? inr(now.netWorth) : '—'}</span>
@@ -136,6 +141,7 @@ export default function BalanceView({ year, month, refreshKey, tagsRefreshKey, o
           </div>
         )}
       </section>
+      )}
 
       <div className="vx-grid">
         <VxCard
@@ -145,7 +151,7 @@ export default function BalanceView({ year, month, refreshKey, tagsRefreshKey, o
           wide
         >
           {!cur ? (
-            <EmptyChart text="Loading…" />
+            <Loading />
           ) : detail.length ? (
             <ul className="bs-lines">
               {detail.map((r) => {
@@ -192,7 +198,9 @@ export default function BalanceView({ year, month, refreshKey, tagsRefreshKey, o
         </VxCard>
 
         <VxCard title="Net worth change each month" subtitle={hideAmounts ? '' : `${signed(Math.round(monthlyChange.reduce((a, b) => a + b, 0)))} so far in ${year}`}>
-          {hasYear ? (
+          {!cur ? (
+            <Loading />
+          ) : hasYear ? (
             <MonthBars
               labels={MONTH_LABELS.map((m) => m[0])}
               values={monthlyChange}
@@ -208,7 +216,7 @@ export default function BalanceView({ year, month, refreshKey, tagsRefreshKey, o
         </VxCard>
 
         <VxCard title={`Net worth, assets & debts · ${year}`} subtitle="Assets up, debts down, net worth as the line: tap a month" wide>
-          {hasYear ? <NetWorthTrend rows={rows} stop={stop || 12} highlight={month - 1} /> : <EmptyChart text="No balance sheet saved this year." />}
+          {!cur ? <Loading /> : hasYear ? <NetWorthTrend rows={rows} stop={stop || 12} highlight={month - 1} /> : <EmptyChart text="No balance sheet saved this year." />}
         </VxCard>
       </div>
 

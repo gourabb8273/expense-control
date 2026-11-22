@@ -4,11 +4,14 @@ import { useToast } from '../context/ToastContext';
 import { SkeletonLine } from './Skeleton';
 
 import { useFormatMoney } from '../utils/formatMoney';
+import { splitPendingRecurring } from '../utils/analytics';
 
-function RecurringBanner({ year, month, refreshKey = 0, onApplied }) {
+function RecurringBanner({ year, month, refreshKey = 0, onApplied, transactions }) {
   const toast = useToast();
   const { inr } = useFormatMoney();
-  const [pending, setPending] = useState([]);
+  const [allPending, setPending] = useState([]);
+  // Rules you already added by hand this month (maybe with a different amount) don't count as pending
+  const { pending, covered } = splitPendingRecurring(allPending, transactions);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -33,7 +36,7 @@ function RecurringBanner({ year, month, refreshKey = 0, onApplied }) {
     if (pending.length === 0) return;
     setApplying(true);
     try {
-      const res = await api.post('/recurring/apply', { year, month, dryRun: false });
+      const res = await api.post('/recurring/apply', { year, month, dryRun: false, ruleIds: pending.map((p) => String(p.ruleId)) });
       const count = res.data.created?.length || 0;
       toast.success(count ? `Added ${count} recurring ${count === 1 ? 'entry' : 'entries'}` : 'Nothing new to add');
       await load();
@@ -117,6 +120,21 @@ function RecurringBanner({ year, month, refreshKey = 0, onApplied }) {
                 </li>
               ))}
             </ul>
+          )}
+          {covered.length > 0 && (
+            <div className="recurring-covered">
+              <p className="muted small">Already added by you this month (not counted as pending):</p>
+              <ul className="recurring-pending-list">
+                {covered.map((p) => (
+                  <li key={p.ruleId} className="recurring-pending-row is-covered">
+                    <span>✓ {p.name}</span>
+                    <span className="muted small">
+                      rule {inr(p.amount)} · you added {inr(p.matchedWith.amount)} as “{p.matchedWith.category}”
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           <p className="muted small recurring-banner-hint">
             Rules skip months where they were already added. Edit rules via Manage recurring in the header.

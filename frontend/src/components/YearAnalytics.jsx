@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '../services/api';
 import { useFormatMoney } from '../utils/formatMoney';
 import { MONTH_LABELS, TYPE_COLORS, daysInMonth, totalsByKey, txDay } from '../utils/analytics';
-import { VxCard, Legend, Segmented, EmptyChart } from './charts/ChartKit';
+import { VxCard, Legend, Segmented, EmptyChart, Loading } from './charts/ChartKit';
 import NetWorthTrend from './NetWorthTrend';
 import LineAreaChart from './charts/LineAreaChart';
 import { MonthBars } from './charts/BarCharts';
@@ -175,7 +175,7 @@ export default function YearAnalytics({ year, yearlySummary, yearlyCashflow }) {
           wide
         >
           {!months ? (
-            <EmptyChart text="Loading the year…" />
+            <Loading text="Loading the year…" />
           ) : heatRows.length ? (
             <CategoryMonthHeatmap rows={heatRows} format={fmt} highlightMonth={year === today.getFullYear() ? lastMonth : null} rgb={heatType === 'expense' ? '249, 115, 22' : '34, 197, 94'} />
           ) : (
@@ -192,7 +192,7 @@ export default function YearAnalytics({ year, yearlySummary, yearlyCashflow }) {
               todayKey={`${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`}
             />
           ) : (
-            <EmptyChart text="Loading the year…" />
+            <Loading text="Loading the year…" />
           )}
         </VxCard>
       </div>
