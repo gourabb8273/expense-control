@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { useFormatMoney } from '../utils/formatMoney';
 import { MONTH_LABELS, sumBy } from '../utils/analytics';
 import { Segmented } from './charts/ChartKit';
+import FutureBuys from './FutureBuys';
 
 /*
  * Rough plan: plan this month or a coming month like a notepad — each line is an Expense,
@@ -97,6 +98,7 @@ export default function RoughPlan({ year, month }) {
   const [rules, setRules] = useState(null);
   const [inflowInfo, setInflowInfo] = useState(null);
   const [actualTx, setActualTx] = useState([]);
+  const [mode, setMode] = useState('month');
   const loadedFor = useRef(`${sel.y}-${sel.m}`);
   const inputRef = useRef(null);
   const isCurrent = sel.i === 0;
@@ -247,8 +249,43 @@ export default function RoughPlan({ year, month }) {
       </div>
     );
 
+  // From the Future buys list: drop an item into its target month's plan as an expense line
+  const addToMonthPlan = (item) => {
+    const [y, m] = item.when.split('-').map(Number);
+    const line = { id: newId(), text: `${item.name} ${item.budget || ''}`.trim(), done: false, kind: 'expense' };
+    if (y === sel.y && m === sel.m) setLines((p) => [...p, line]);
+    else save(y, m, [...load(y, m), line]);
+    const target = months.find((p) => p.y === y && p.m === m);
+    if (target) setSel(target);
+    setMode('month');
+  };
+
+  const modeSwitch = (
+    <div className="rp-mode">
+      <Segmented
+        value={mode}
+        onChange={setMode}
+        options={[
+          { value: 'month', label: 'Monthly plan' },
+          { value: 'future', label: 'Future buys' },
+        ]}
+      />
+    </div>
+  );
+
+  if (mode === 'future') {
+    return (
+      <section className="rough-plan" aria-label="Future buys">
+        {modeSwitch}
+        <FutureBuys onAddToPlan={addToMonthPlan} />
+        <p className="rp-note muted small">Saved on this device only. It never changes your entries or any app data.</p>
+      </section>
+    );
+  }
+
   return (
     <section className="rough-plan" aria-label="Rough plan">
+      {modeSwitch}
       <div className="rp-months no-swipe" role="tablist" aria-label="Plan month">
         {months.map((p) => (
           <button
